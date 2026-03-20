@@ -1,0 +1,158 @@
+.experiment-block {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.block-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+.indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+}
+
+.indicator-dot.active {
+  background: #4CAF50;
+  animation: pulse 1s infinite;
+}
+
+.experiment-content {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.experiment-stub {
+  text-align: center;
+  padding: 30px;
+}
+
+.stub-content {
+  margin-top: 30px;
+}
+
+.rating-buttons,
+.difficulty-rating {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.rating-btn,
+.option-btn,
+.reaction-btn,
+.star-btn {
+  padding: 10px 20px;
+  border: 2px solid #ddd;
+  background: white;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.rating-btn:hover,
+.option-btn:hover,
+.reaction-btn:hover,
+.star-btn:hover {
+  border-color: #4CAF50;
+  background: #f0f9f0;
+}
+
+.star-btn.selected {
+  background: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.color-box {
+  width: 200px;
+  height: 200px;
+  margin: 20px auto;
+  border-radius: 10px;
+  transition: background-color 0.3s;
+}
+
+.sequence-display {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 30px 0;
+}
+
+.sequence-number {
+  width: 50px;
+  height: 50px;
+  background: #2196F3;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.block-footer {
+  margin-top: 30px;
+  text-align: center;
+}
+
+.complete-block-btn {
+  padding: 15px 40px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.complete-block-btn:hover:not(:disabled) {
+  background: #1976D2;
+}
+
+.complete-block-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.hint {
+  display: block;
+  margin-top: 10px;
+  color: #666;
+  font-size: 12px;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes colorChange {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(180deg); }
+}

@@ -1,0 +1,479 @@
+.nback-task {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #f0f0f0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.nback-header {
+  flex-shrink: 0;
+  height: 50px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 1000;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.task-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.n-level-indicator {
+  background-color: #4CAF50;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+}
+
+.trial-counter {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.fullscreen-toggle-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.fullscreen-toggle-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #999;
+}
+
+.nback-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Стили для полноэкранного режима */
+:fullscreen .nback-content {
+  padding-top: 10px;
+}
+
+:fullscreen .nback-header {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+:fullscreen .nback-header:hover {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Инструкции - адаптивная версия */
+.nback-instructions {
+  text-align: center;
+  padding: 20px;
+  max-width: 700px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nback-instructions h3 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.nback-instructions p {
+  color: #555;
+  margin-bottom: 15px;
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+.n-level-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 15px 0;
+  flex-wrap: wrap;
+}
+
+.n-number {
+  font-size: 36px;
+  font-weight: bold;
+  color: #4CAF50;
+  background-color: #e8f5e9;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 3px solid #4CAF50;
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2);
+  flex-shrink: 0;
+}
+
+.instruction-details {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  text-align: left;
+  border-left: 4px solid #4CAF50;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.instruction-details p {
+  margin: 8px 0;
+  color: #495057;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* Пример последовательности */
+.stimulus-example {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #f0f7ff;
+  border-radius: 8px;
+  border: 1px solid #cce5ff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.example-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #0056b3;
+  font-size: 16px;
+  text-align: center;
+}
+
+.example-sequence {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sequence-item {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.sequence-item.past {
+  background-color: #e9ecef;
+  border: 2px solid #adb5bd;
+  color: #6c757d;
+}
+
+.sequence-item.current {
+  background-color: #cce5ff;
+  border: 3px solid #007bff;
+  color: #004085;
+}
+
+.sequence-item.future {
+  background-color: #f8f9fa;
+  border: 2px dashed #6c757d;
+  color: #6c757d;
+}
+
+.example-explanation {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #d4edda;
+  border-radius: 6px;
+  color: #155724;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* История стимулов */
+.stimulus-history {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.history-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 15px;
+  text-align: center;
+}
+
+.history-items {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.history-item-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.history-position {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+
+.history-item {
+  font-size: 18px;
+  font-weight: bold;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  transition: all 0.3s;
+}
+
+.history-item.n-position {
+  background-color: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
+  transform: scale(1.05);
+  box-shadow: 0 3px 6px rgba(255, 193, 7, 0.2);
+}
+
+/* Кнопка пробела */
+.space-instruction {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.space-message {
+  font-size: 16px;
+  color: #333;
+  transition: opacity 0.5s ease;
+  margin: 0;
+  text-align: center;
+}
+
+.space-key {
+  display: inline-block;
+  padding: 6px 15px;
+  background: #4CAF50;
+  color: white;
+  border-radius: 4px;
+  font-weight: bold;
+  margin: 0 3px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Прогресс индикатор */
+.progress-indicator {
+  margin-top: 15px;
+  padding: 12px;
+  background: linear-gradient(90deg, #4CAF50, #2196F3);
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Стимул и фиксация */
+.nback-stimulus {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  flex: 1;
+}
+
+.stimulus-letter {
+  font-size: 80px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  color: #212529;
+  text-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.nback-fixation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  flex: 1;
+}
+
+.fixation-cross {
+  font-size: 60px;
+  color: #4CAF50;
+  font-weight: bold;
+  animation: pulseCross 2s infinite;
+}
+
+@keyframes pulseCross {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Для ITI фазы */
+.nback-iti {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .nback-instructions {
+    padding: 15px;
+    max-width: 95%;
+  }
+  
+  .stimulus-letter {
+    font-size: 60px;
+  }
+  
+  .fixation-cross {
+    font-size: 50px;
+  }
+  
+  .n-number {
+    font-size: 30px;
+    padding: 8px 16px;
+  }
+  
+  .sequence-item {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .history-item {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+  }
+  
+  .nback-instructions h3 {
+    font-size: 20px;
+  }
+  
+  .nback-instructions p {
+    font-size: 15px;
+  }
+  
+  .space-message {
+    font-size: 14px;
+  }
+}
+
+@media (max-height: 700px) {
+  .nback-instructions {
+    padding: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .stimulus-example,
+  .stimulus-history {
+    margin: 10px 0;
+    padding: 10px;
+  }
+  
+  .space-instruction {
+    margin-top: 10px;
+    padding: 10px;
+  }
+  
+  .progress-indicator {
+    margin-top: 10px;
+    padding: 8px;
+  }
+  
+  .instruction-details {
+    margin: 10px 0;
+    padding: 10px;
+  }
+}
