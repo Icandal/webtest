@@ -4,6 +4,7 @@ import NBackTask from '../NBackTask/NBackTask';
 import GoNoGoTask from '../GoNoGoTask/GoNoGoTask';
 import PostExperimentQuestionnaire from '../PostExperimentQuestionnaire/PostExperimentQuestionnaire';
 import { participantApi, nbackApi } from '../utils/api';
+import api from '../utils/api';
 import './ExperimentFlow.css';
 
 const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
@@ -113,12 +114,7 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     setGonogoCompleted(true);
     if (blockData.blockId) {
       try {
-        // ✅ исправленный вызов завершения блока
-        await fetch('/api/block/complete/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ block_id: blockData.blockId })
-        });
+        await api.post('/block/complete/', { block_id: blockData.blockId });
       } catch (error) {}
     }
     try {
@@ -146,11 +142,7 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     setQuestionnaireCompleted(true);
     if (blockData.blockId) {
       try {
-        await fetch('/api/block/complete/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ block_id: blockData.blockId })
-        });
+        await api.post('/block/complete/', { block_id: blockData.blockId });
       } catch (error) {}
     }
     completeExperiment();

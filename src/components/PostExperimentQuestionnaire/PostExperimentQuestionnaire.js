@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './PostExperimentQuestionnaire.css';
+import api from '../utils/api'; // ✅ импортируем единый клиент
 
 const BLOCK1_QUESTIONS = [
   'Я использую большую языковую модель, чтобы лучше понять материал при подготовке к занятиям.',
@@ -78,7 +79,6 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
     const selected1 = shuffleArray(BLOCK1_QUESTIONS).slice(0, 10);
     const selected2 = shuffleArray(BLOCK2_QUESTIONS).slice(0, 10);
     const selected3 = [...BLOCK3_QUESTIONS];
-
     const combined = [...selected1, ...selected2, ...selected3];
     const finalShuffled = shuffleArray(combined);
     setShuffledQuestions(finalShuffled);
@@ -140,23 +140,21 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
           reaction_time: t.reaction_time,
           client_time: t.client_time,
         }));
-        const response = await fetch('/api/questionnaire/trials/batch/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trials: trialsData })
+        // ✅ Используем единый api клиент
+        const response = await api.post('/questionnaire/trials/batch/', {
+          block_id: blockId,
+          trials: trialsData
         });
-        if (response.ok) sendSuccess = true;
-      } catch (error) {}
+        if (response.status === 201) sendSuccess = true;
+      } catch (error) {
+        console.error('Ошибка сохранения данных опросника:', error);
+      }
     }
     setIsSending(false);
 
     if (blockId) {
       try {
-        await fetch('/api/block/complete/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ block_id: blockId })
-        });
+        await api.post('/block/complete/', { block_id: blockId });
       } catch (e) {}
     }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './FlankerTask.css';
+import api from '../utils/api';
 
 const FLANKER_CONFIG = {
   trialsPerBlock: 200,
@@ -146,16 +147,13 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
         client_fixation_time: t.client_fixation_time,
         client_response_time: t.client_response_time,
       }));
-      const response = await fetch('/api/trials/batch/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          block_id: blockId,     // ✅ добавлен block_id
-          trials: trialsData 
-        })
+      const response = await api.post('/trials/batch/', {
+        block_id: blockId,
+        trials: trialsData
       });
-      return response.ok;
+      return response.status === 201;
     } catch (error) {
+      console.error('Ошибка отправки данных Flanker:', error);
       return false;
     }
   };
@@ -164,12 +162,8 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     if (blockDataRef.current.length > 0) await sendBatchData();
     if (blockId) {
       try {
-        await fetch('/api/block/complete/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ block_id: blockId })
-        });
-      } catch (error) { }
+        await api.post('/block/complete/', { block_id: blockId });
+      } catch (error) { console.error('Ошибка завершения блока Flanker:', error); }
     }
     if (onBlockComplete) {
       onBlockComplete({

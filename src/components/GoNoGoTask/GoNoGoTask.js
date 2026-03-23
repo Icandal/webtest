@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './GoNoGoTask.css';
 import stimuli from './stimuli.json';
+import api from '../utils/api';
 
 const LEVEL_CONFIGS = {
   1: {
@@ -303,26 +304,20 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           client_stimulus_time: t.client_stimulus_time,
           client_response_time: t.client_response_time,
         }));
-        const response = await fetch('/api/gonogo/trials/batch/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            block_id: blockId,      // ✅ добавлен block_id
-            trials: trialsData 
-          })
+        const response = await api.post('/gonogo/trials/batch/', {
+          block_id: blockId,
+          trials: trialsData
         });
-        if (response.ok) sendSuccess = true;
-      } catch (error) { }
+        if (response.status === 201) sendSuccess = true;
+      } catch (error) {
+        console.error('Ошибка отправки данных Go/NoGo:', error);
+      }
     }
     setIsSending(false);
     if (blockId) {
       try {
-        await fetch('/api/block/complete/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ block_id: blockId })
-        });
-      } catch (e) { }
+        await api.post('/block/complete/', { block_id: blockId });
+      } catch (e) { console.error('Ошибка завершения блока Go/NoGo:', e); }
     }
     if (onBlockComplete) {
       const totalTrials = blockDataRef.current.length;
