@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './FlankerTask.css';
 
-
 const FLANKER_CONFIG = {
-  trialsPerBlock: 200, //200
+  trialsPerBlock: 200,
   stimulusDuration: 50,
   fixationDuration: 1200,
   itiDuration: 250,
@@ -150,7 +149,10 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
       const response = await fetch('/api/trials/batch/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trials: trialsData })
+        body: JSON.stringify({ 
+          block_id: blockId,     // ✅ добавлен block_id
+          trials: trialsData 
+        })
       });
       return response.ok;
     } catch (error) {

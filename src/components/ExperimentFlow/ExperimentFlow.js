@@ -113,7 +113,12 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     setGonogoCompleted(true);
     if (blockData.blockId) {
       try {
-        await fetch(`/api/block/${blockData.blockId}/complete/`, { method: 'POST' });
+        // ✅ исправленный вызов завершения блока
+        await fetch('/api/block/complete/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ block_id: blockData.blockId })
+        });
       } catch (error) {}
     }
     try {
@@ -141,7 +146,11 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     setQuestionnaireCompleted(true);
     if (blockData.blockId) {
       try {
-        await fetch(`/api/block/${blockData.blockId}/complete/`, { method: 'POST' });
+        await fetch('/api/block/complete/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ block_id: blockData.blockId })
+        });
       } catch (error) {}
     }
     completeExperiment();

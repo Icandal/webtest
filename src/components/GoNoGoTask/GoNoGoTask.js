@@ -7,7 +7,7 @@ const LEVEL_CONFIGS = {
     name: 'Категории',
     sourceType: 'words',
     numCategoriesToSelect: 3,
-    trialsPerCategory: 30, //30
+    trialsPerCategory: 30,
     categoryDuration: 1000,
     stimulusDuration: 2000,
     itiDuration: 250,
@@ -17,7 +17,7 @@ const LEVEL_CONFIGS = {
   2: {
     name: 'Предложения с ошибками',
     sourceType: 'phrases',
-    trialsPerCategory: 30, //30
+    trialsPerCategory: 30,
     categoryDuration: 1000,
     stimulusDuration: 5000,
     itiDuration: 250,
@@ -34,7 +34,7 @@ const LEVEL_CONFIGS = {
   3: {
     name: 'Сложные предложения',
     sourceType: 'sentences',
-    trialsPerCategory: 30, //30
+    trialsPerCategory: 30,
     categoryDuration: 1000,
     stimulusDuration: 5000,
     itiDuration: 250,
@@ -303,10 +303,13 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           client_stimulus_time: t.client_stimulus_time,
           client_response_time: t.client_response_time,
         }));
-        const response = await fetch('/api/gonogo/trials/batch/', {
+        const response = await fetch('/api/trials/batch/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trials: trialsData })
+          body: JSON.stringify({ 
+            block_id: blockId,      // ✅ добавлен block_id
+            trials: trialsData 
+          })
         });
         if (response.ok) sendSuccess = true;
       } catch (error) { }
