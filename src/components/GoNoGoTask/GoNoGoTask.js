@@ -303,7 +303,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           client_stimulus_time: t.client_stimulus_time,
           client_response_time: t.client_response_time,
         }));
-        const response = await fetch('/api/trials/batch/', {
+        const response = await fetch('/api/gonogo/trials/batch/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
