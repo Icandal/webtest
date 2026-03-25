@@ -4,7 +4,7 @@ import api from '../utils/api';
 
 const FLANKER_CONFIG = {
   trialsPerBlock: 200,
-  stimulusDuration: 50,
+  stimulusDuration: 100,
   fixationDuration: 1200,
   itiDuration: 250,
   stimuli: [
