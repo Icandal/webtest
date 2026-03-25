@@ -188,17 +188,6 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
                 : 'Завершающий опросник'}
         </h2>
         <p>Участник: {participantData.participant_id} | Сессия: {participantData.session_number}</p>
-        <div className="progress-indicator">
-          <div className="progress-steps">
-            <span className={`step ${!flankerCompleted ? 'active' : 'completed'}`}>1. Flanker Task</span>
-            <span className="step-arrow">→</span>
-            <span className={`step ${flankerCompleted && !nbackCompleted ? 'active' : flankerCompleted ? 'completed' : ''}`}>2. N‑back Task</span>
-            <span className="step-arrow">→</span>
-            <span className={`step ${nbackCompleted && !gonogoCompleted ? 'active' : nbackCompleted ? 'completed' : ''}`}>3. Go/No‑Go Task</span>
-            <span className="step-arrow">→</span>
-            <span className={`step ${gonogoCompleted && !questionnaireCompleted ? 'active' : gonogoCompleted ? 'completed' : ''}`}>4. Опросник</span>
-          </div>
-        </div>
       </div>
 
       {error && (

@@ -105,7 +105,6 @@
   visibility: visible;
 }
 
-/* Остальные существующие стили остаются без изменений */
 .trial-info {
   display: flex;
   justify-content: space-around;
@@ -165,7 +164,14 @@
 
 .flanker-fixation .fixation-cross {
   font-size: 72px;
+  font-weight: 100; 
+  color: black;   
   margin: 40px 0;
+}
+
+.central-arrow-highlight {
+  color: red;
+  font-weight: bold;
 }
 
 .flanker-stimulus .stimulus {

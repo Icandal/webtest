@@ -30,7 +30,7 @@ const LEVEL_CONFIGS = {
     ],
     nonCategoryWords: stimuli.phrases.correct,
     targetProbability: 0.5,
-    keys: { yes: ['Space'] }
+    keys: { yes: ['ArrowRight'], no: ['ArrowLeft'] }
   },
   3: {
     name: 'Сложные предложения',
@@ -47,7 +47,7 @@ const LEVEL_CONFIGS = {
     ],
     nonCategoryWords: stimuli.sentences.correct,
     targetProbability: 0.5,
-    keys: { yes: ['Space'] }
+    keys: { yes: ['ArrowRight'], no: ['ArrowLeft'] }
   }
 };
 
@@ -94,14 +94,13 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, []);
 
-  const getKeyInstructions = useCallback((config) => {
-    const yesKeys = (config.keys.yes || []).map(formatKey);
-    const noKeys = (config.keys.no || []).map(formatKey);
-    if (noKeys.length > 0) {
-      return `ДА – ${yesKeys.join(' или ')}, НЕТ – ${noKeys.join(' или ')}`;
+  const getShortHint = useCallback((categoryName) => {
+    if (currentLevel === 1) {
+      return `→ – относится к категории «${categoryName}», ← – не относится`;
+    } else {
+      return '→ – ошибок нет, ← – есть ошибка';
     }
-    return `ДА – ${yesKeys.join(' или ')} (если стимул относится к текущей категории), НЕТ – не нажимайте ничего`;
-  }, [formatKey]);
+  }, [currentLevel]);
 
   useEffect(() => { phaseRef.current = currentPhase; }, [currentPhase]);
   useEffect(() => { trialsRef.current = trialsForCurrentCategory; }, [trialsForCurrentCategory]);
@@ -150,16 +149,24 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             : '?';
         }
       }
+      // Для уровня 1: таргет = относится к категории → ответ 'yes' (→)
+      // Для уровней 2,3: таргет = содержит ошибку → ответ 'no' (←)
+      let correctResponse;
+      if (currentLevel === 1) {
+        correctResponse = isTarget ? 'yes' : 'no';
+      } else {
+        correctResponse = isTarget ? 'no' : 'yes';
+      }
       trials.push({
         trialNumberInCategory: i + 1,
         category: category.name,
         word,
         isTarget,
-        correctResponse: isTarget ? 'yes' : 'no'
+        correctResponse
       });
     }
     return trials;
-  }, [config.trialsPerCategory, config.targetProbability, config.sourceType, config.nonCategoryWords]);
+  }, [config.trialsPerCategory, config.targetProbability, config.sourceType, config.nonCategoryWords, currentLevel]);
 
   const loadCategory = useCallback((index) => {
     const categories = currentLevelCategories;
@@ -222,6 +229,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   }, [blockId, currentLevel, currentCategoryIndex, config.itiDuration, clearTimer]);
 
   const handleNoResponse = useCallback((trial) => {
+    const isCorrect = !trial.isTarget; // для нетаргета молчание = правильно
     const trialData = {
       experiment_block: parseInt(blockId),
       global_trial_number: blockDataRef.current.length + 1,
@@ -232,7 +240,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       stimulus: trial.word,
       response: null,
       correct_response: trial.correctResponse,
-      is_correct: !trial.isTarget,
+      is_correct: isCorrect,
       is_target: trial.isTarget,
       reaction_time: null,
       client_category_time: categoryStartTimeRef.current,
@@ -345,6 +353,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const startCurrentLevel = useCallback(() => {
     if (currentLevel === 1 && config.sourceType === 'words') {
+      // Выбираем 3 случайные категории
       const selected = selectRandomCategories(stimuli.words.categories, config.numCategoriesToSelect);
       setCurrentLevelCategories(selected);
     } else {
@@ -409,18 +418,39 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const renderPhaseContent = () => {
     switch (currentPhase) {
       case 'instructions':
-        const yesKeys = (config.keys.yes || []).map(formatKey);
-        const noKeys = (config.keys.no || []).map(formatKey);
-        let keyInstructions = '';
-        if (noKeys.length > 0) {
-          keyInstructions = `ДА – ${yesKeys.join(' или ')}, НЕТ – ${noKeys.join(' или ')}`;
+        let instructionText = '';
+        if (currentLevel === 1) {
+          instructionText = (
+            <>
+              <p>В следующем тесте на экране будет появляться слово. Вам нужно определить, относится ли это слово к категории, которая будет показана на следующем экране.</p>
+              <p>Если да – нажмите <strong>→</strong>, если нет – нажмите <strong>←</strong>.</p>
+              <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+              <p><strong>Время теста составит примерно 5 минут.</strong></p>
+            </>
+          );
+        } else if (currentLevel === 2) {
+          instructionText = (
+            <>
+              <p>В данном задании на экране будут показаны словосочетания и простые короткие предложения. Ваша задача — определить, содержит ли словосочетание или предложение ошибку (любую: орфографическую, грамматическую, пунктуационную и т.д.) или ошибок нет.</p>
+              <p>Нажмите <strong>→</strong>, если ошибок нет, и <strong>←</strong>, если ошибка есть.</p>
+              <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+              <p><strong>Время теста составит примерно 2 минуты.</strong></p>
+            </>
+          );
         } else {
-          keyInstructions = `ДА – ${yesKeys.join(' или ')} (если стимул относится к текущей категории), НЕТ – не нажимайте ничего`;
+          instructionText = (
+            <>
+              <p>В данном задании на экране будут показаны предложения. Ваша задача — определить, содержит ли эти предложения ошибку (любую: орфографическую, грамматическую, пунктуационную и т.д.) или ошибок нет.</p>
+              <p>Нажмите <strong>→</strong>, если ошибок нет, и <strong>←</strong>, если ошибка есть.</p>
+              <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+              <p><strong>Время теста составит примерно 2 минуты.</strong></p>
+            </>
+          );
         }
         return (
           <div className="gonogo-instructions">
-            <h2>Go/No-Go — {config.name}</h2>
-            <p><strong>{keyInstructions}</strong></p>
+            <h2>Тест 3 — {config.name}</h2>
+            {instructionText}
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {LEVELS.length}</div>
             <p className="space-message">[ПРОБЕЛ] начать уровень</p>
             {isSending && <p>Отправка...</p>}
@@ -432,9 +462,9 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             <div className="category-container">
               <div className="category-label">Категория</div>
               <div className="category-name">{currentCategory?.name}</div>
-              <p className="space-message">[ПРОБЕЛ] начать уровень</p>
+              <p className="space-message">[ПРОБЕЛ] начать тест</p>
               <div className="category-instruction">
-                {getKeyInstructions(config)}
+                {getShortHint(currentCategory?.name)}
               </div>
             </div>
           </div>

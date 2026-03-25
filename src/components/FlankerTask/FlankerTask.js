@@ -13,9 +13,10 @@ const FLANKER_CONFIG = {
     { type: 'incongruent', stimulus: '←←→←←', correctResponse: 'right' },
     { type: 'incongruent', stimulus: '→→←→→', correctResponse: 'left' },
   ],
+  // Только стрелки влево/вправо
   keys: {
-    left: ['ArrowLeft', 'a', 'A'],
-    right: ['ArrowRight', 'd', 'D']
+    left: ['ArrowLeft'],
+    right: ['ArrowRight']
   }
 };
 
@@ -282,15 +283,41 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, [currentPhase]);
 
+  // Функция для выделения центральной стрелки в примере
+  const highlightCentralArrow = (stimulus) => {
+    if (!stimulus || stimulus.length !== 5) return stimulus;
+    const centralIndex = 2; // 0-based, пятая стрелка => индекс 2
+    return (
+      <>
+        {stimulus.substring(0, centralIndex)}
+        <span className="central-arrow-highlight">{stimulus[centralIndex]}</span>
+        {stimulus.substring(centralIndex + 1)}
+      </>
+    );
+  };
+
   const renderPhaseContent = () => {
     if (currentPhase === 'instructions') {
       return (
         <div className="flanker-instructions">
-          <h3>Flanker Task</h3>
-          <p>Определите направление <strong>центральной стрелки</strong></p>
+          <h3 style={{ fontWeight: 'bold' }}>Тест 1</h3>
+          <p>
+            На экране будут появляться последовательности из пяти стрелок, например {'<<><<'} или {'>>><<'}.<br />
+            Ваша задача определить, в какую сторону направлена центральная стрелка (
+            {highlightCentralArrow('>>><<')}) и нажать соответствующую кнопку.<br />
+            Если стрелка направлена влево – нажмите <strong>←</strong>, если вправо – нажмите <strong>→</strong>.<br />
+            <strong>Важно</strong> – решение нужно принять как можно быстрее, но правильно!<br />
+            Время теста составит примерно 5 минут.
+          </p>
           <div className="instruction-keys">
-            <div className="key-group"><span className="key">←</span><span className="key">A</span><span className="key-label">Стрелка влево</span></div>
-            <div className="key-group"><span className="key">→</span><span className="key">D</span><span className="key-label">Стрелка вправо</span></div>
+            <div className="key-group">
+              <span className="key">←</span>
+              <span className="key-label">Стрелка влево</span>
+            </div>
+            <div className="key-group">
+              <span className="key">→</span>
+              <span className="key-label">Стрелка вправо</span>
+            </div>
           </div>
           {showFullscreenPrompt && !isFullscreen && (
             <div className="fullscreen-prompt-overlay">

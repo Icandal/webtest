@@ -3,7 +3,7 @@ import './NBackTask.css';
 import { nbackApi } from '../utils/api';
 
 const NBACK_CONFIG = {
-  trialsPerLevel: 50, //50
+  trialsPerLevel: 50,
   stimulusDuration: 800,
   fixationDuration: 1500,
   itiDuration: 200,
@@ -220,14 +220,34 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   };
 
+  // Функция для получения текста инструкции в зависимости от уровня
+  const getInstructionText = (level) => {
+    if (level === 1) {
+      return (
+        <>
+          <p><strong>Тест 2 (1‑back):</strong> Вам будут по одному предъявляться буквы, и ваша задача — сравнивать текущую букву с той, которая была показана перед ней. При совпадении, нажмите «Пробел», если не совпадают — ничего не нажимайте.</p>
+          <p>Старайтесь отвечать как можно быстрее и точнее, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+        </>
+      );
+    } else if (level === 2) {
+      return (
+        <>
+          <p><strong>Тест 2 (2‑back):</strong> Вам будут по одному предъявляться буквы, и ваша задача — сравнивать текущую букву с той, которая была показана два шага назад. Например, в последовательности А‑В‑Б‑В есть совпадение, а в А‑В‑Б‑А – нет. При совпадении, нажмите «Пробел», если не совпадают — ничего не нажимайте.</p>
+          <p>Старайтесь отвечать как можно быстрее и точнее, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+        </>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="nback-task">
       <div className="nback-content">
         {displayPhase === 'instructions' && (
           <div className="nback-instructions">
-            <h2>N-back Task</h2>
+            <h2>Тест 2</h2>
             <h3>Уровень: {displayLevel}-back</h3>
-            <p>Нажимайте <strong>ПРОБЕЛ</strong>, если текущая буква совпадает с той, что была</p>
+            {getInstructionText(displayLevel)}
             <div className="instruction-details">
               <p>◉ Триалов в уровне: {NBACK_CONFIG.trialsPerLevel}</p>
               <p>◉ Отвечайте во время показа знака "+"</p>

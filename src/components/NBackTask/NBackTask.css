@@ -385,8 +385,8 @@
 
 .fixation-cross {
   font-size: 60px;
-  color: #4CAF50;
-  font-weight: bold;
+  font-weight: 100;      
+  color: black;          
   animation: pulseCross 2s infinite;
 }
 
