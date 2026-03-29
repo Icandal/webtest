@@ -4,16 +4,14 @@ import api from '../utils/api';
 
 const FLANKER_CONFIG = {
   trialsPerBlock: 200,
-  stimulusDuration: 100,
-  fixationDuration: 1200,
-  itiDuration: 250,
+  stimulusDuration: 2000,
+  fixationDuration: 3000,
   stimuli: [
     { type: 'congruent', stimulus: '←←←←←', correctResponse: 'left' },
     { type: 'congruent', stimulus: '→→→→→', correctResponse: 'right' },
     { type: 'incongruent', stimulus: '←←→←←', correctResponse: 'right' },
     { type: 'incongruent', stimulus: '→→←→→', correctResponse: 'left' },
   ],
-  // Только стрелки влево/вправо
   keys: {
     left: ['ArrowLeft'],
     right: ['ArrowRight']
@@ -33,7 +31,8 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
   const stimulusShownRef = useRef(null);
   const fixationShownRef = useRef(null);
   const blockDataRef = useRef([]);
-  const timeoutRef = useRef(null);
+  const stimulusTimeoutRef = useRef(null);
+  const fixationTimeoutRef = useRef(null);
   const responseReceivedRef = useRef(false);
   const containerRef = useRef(null);
 
@@ -129,7 +128,8 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
+      if (fixationTimeoutRef.current) clearTimeout(fixationTimeoutRef.current);
     };
   }, []);
 
@@ -192,79 +192,95 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     };
   }, [blockId]);
 
+  const goToFixationAndNext = useCallback((nextTrialIndex, isLastTrial) => {
+    if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
+    
+    setCurrentPhase('fixation');
+    setCurrentStimulus('+');
+    fixationShownRef.current = Date.now();
+
+    fixationTimeoutRef.current = setTimeout(() => {
+      if (isLastTrial) {
+        completeBlock();
+      } else {
+        setCurrentTrial(nextTrialIndex);
+        startTrial(nextTrialIndex);
+      }
+    }, FLANKER_CONFIG.fixationDuration);
+  }, [completeBlock]);
+
   const handleNoResponse = useCallback((trialIndex, trialData) => {
+    if (responseReceivedRef.current) return;
+    responseReceivedRef.current = true;
+    
     blockDataRef.current.push(saveTrialData(trialData, null, null, null));
-    responseReceivedRef.current = false;
+    
     const nextTrial = trialIndex + 1;
-    if (nextTrial < trials.length) {
-      setCurrentTrial(nextTrial);
-      setCurrentPhase('iti');
-      setCurrentStimulus('');
-      timeoutRef.current = setTimeout(() => startTrial(nextTrial), FLANKER_CONFIG.itiDuration);
-    } else {
-      setCurrentPhase('iti');
-      timeoutRef.current = setTimeout(completeBlock, FLANKER_CONFIG.itiDuration);
-    }
-  }, [trials.length, completeBlock, saveTrialData]);
+    const isLast = nextTrial >= trials.length;
+    goToFixationAndNext(nextTrial, isLast);
+  }, [trials.length, saveTrialData, goToFixationAndNext]);
 
   const handleResponse = useCallback((responseMade, trialIndex, trialData, responseTime) => {
+    if (responseReceivedRef.current) return;
+    responseReceivedRef.current = true;
+    
+    if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
+    
     const clientResponseTime = Date.now();
     blockDataRef.current.push(saveTrialData(trialData, responseMade, responseTime, clientResponseTime));
-    responseReceivedRef.current = true;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    
     const nextTrial = trialIndex + 1;
-    if (nextTrial < trials.length) {
-      setCurrentTrial(nextTrial);
-      setCurrentPhase('iti');
-      setCurrentStimulus('');
-      timeoutRef.current = setTimeout(() => startTrial(nextTrial), FLANKER_CONFIG.itiDuration);
-    } else {
-      setCurrentPhase('iti');
-      timeoutRef.current = setTimeout(completeBlock, FLANKER_CONFIG.itiDuration);
-    }
-  }, [trials.length, completeBlock, saveTrialData]);
+    const isLast = nextTrial >= trials.length;
+    goToFixationAndNext(nextTrial, isLast);
+  }, [trials.length, saveTrialData, goToFixationAndNext]);
 
   const startTrial = useCallback((trialIndex) => {
     if (trialIndex >= trials.length) {
       completeBlock();
       return;
     }
+    
+    if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
+    if (fixationTimeoutRef.current) clearTimeout(fixationTimeoutRef.current);
+    
     const trialData = trials[trialIndex];
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     responseReceivedRef.current = false;
     trialStartRef.current = Date.now();
+    
     setCurrentPhase('stimulus');
     setCurrentStimulus(trialData.stimulus);
     stimulusShownRef.current = Date.now();
-    timeoutRef.current = setTimeout(() => {
-      setCurrentPhase('fixation');
-      setCurrentStimulus('+');
-      fixationShownRef.current = Date.now();
-      timeoutRef.current = setTimeout(() => {
-        if (!responseReceivedRef.current) handleNoResponse(trialIndex, trialData);
-      }, FLANKER_CONFIG.fixationDuration);
+    
+    stimulusTimeoutRef.current = setTimeout(() => {
+      if (!responseReceivedRef.current) {
+        handleNoResponse(trialIndex, trialData);
+      }
     }, FLANKER_CONFIG.stimulusDuration);
   }, [trials, completeBlock, handleNoResponse]);
 
   const handleKeyPress = useCallback((event) => {
     const { code, key } = event;
+    
     if (code === 'F11') {
       event.preventDefault();
       toggleFullscreen();
     }
+    
     if (code === 'Escape' && isFullscreen && currentPhase === 'instructions') {
       exitFullscreen();
     }
+    
     if (currentPhase === 'instructions' && code === 'Space') {
       event.preventDefault();
       startTrial(0);
     }
-    if (currentPhase === 'fixation' && trials[currentTrial]) {
+    
+    if (currentPhase === 'stimulus' && !responseReceivedRef.current && trials[currentTrial]) {
       const isLeftKey = FLANKER_CONFIG.keys.left.includes(key);
       const isRightKey = FLANKER_CONFIG.keys.right.includes(key);
       if (isLeftKey || isRightKey) {
         event.preventDefault();
-        const responseTime = Date.now() - fixationShownRef.current;
+        const responseTime = Date.now() - stimulusShownRef.current;
         const responseMade = isLeftKey ? 'left' : 'right';
         handleResponse(responseMade, currentTrial, trials[currentTrial], responseTime);
       }
@@ -283,10 +299,9 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, [currentPhase]);
 
-  // Функция для выделения центральной стрелки в примере
   const highlightCentralArrow = (stimulus) => {
     if (!stimulus || stimulus.length !== 5) return stimulus;
-    const centralIndex = 2; // 0-based, пятая стрелка => индекс 2
+    const centralIndex = 2;
     return (
       <>
         {stimulus.substring(0, centralIndex)}
@@ -302,9 +317,9 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
         <div className="flanker-instructions">
           <h3 style={{ fontWeight: 'bold' }}>Тест 1</h3>
           <p>
-            На экране будут появляться последовательности из пяти стрелок, например {'<<><<'} или {'>>><<'}.<br />
+            На экране будут появляться последовательности из пяти стрелок, например {'←←→←←'} или {'→→←→→'}.<br />
             Ваша задача определить, в какую сторону направлена центральная стрелка (
-            {highlightCentralArrow('>>><<')}) и нажать соответствующую кнопку.<br />
+            {highlightCentralArrow('→→←→→')}) и нажать соответствующую кнопку.<br />
             Если стрелка направлена влево – нажмите <strong>←</strong>, если вправо – нажмите <strong>→</strong>.<br />
             <strong>Важно</strong> – решение нужно принять как можно быстрее, но правильно!<br />
             Время теста составит примерно 5 минут.
@@ -359,9 +374,6 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
           <div className="stimulus">{currentStimulus}</div>
         </div>
       );
-    }
-    if (currentPhase === 'iti') {
-      return <div className="flanker-iti"></div>;
     }
     return null;
   };
