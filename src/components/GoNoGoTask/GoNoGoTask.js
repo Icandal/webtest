@@ -291,65 +291,65 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   }, [currentLevelIndex, clearTimer]);
 
   const completeBlock = useCallback(async () => {
-    setIsSending(true);
-    let sendSuccess = false;
-    if (blockId) {
-      try {
-        const trialsData = blockDataRef.current.map(t => ({
-          experiment_block: t.experiment_block,
-          trial_number: t.global_trial_number,
-          level: t.level,
-          category_index: t.category_index,
-          category_name: t.category_name,
-          trial_in_category: t.trial_in_category,
-          stimulus: t.stimulus,
-          response: t.response,
-          correct_response: t.correct_response,
-          is_correct: t.is_correct,
-          is_target: t.is_target,
-          reaction_time: t.reaction_time,
-          client_category_time: t.client_category_time,
-          client_stimulus_time: t.client_stimulus_time,
-          client_response_time: t.client_response_time,
-        }));
-        const response = await api.post('/gonogo/trials/batch/', {
-          block_id: blockId,
-          trials: trialsData
-        });
-        if (response.status === 201) sendSuccess = true;
-      } catch (error) {
-        console.error('Ошибка отправки данных Go/NoGo:', error);
-      }
-    }
-    setIsSending(false);
-    if (blockId) {
-      try {
-        await api.post('/block/complete/', { block_id: blockId });
-      } catch (e) { console.error('Ошибка завершения блока Go/NoGo:', e); }
-    }
-    if (onBlockComplete) {
-      const totalTrials = blockDataRef.current.length;
-      const correctTrials = blockDataRef.current.filter(t => t.is_correct).length;
-      onBlockComplete({
-        blockType: 'gonogo_task',
-        totalTrials,
-        completedTrials: totalTrials,
-        accuracy: totalTrials ? correctTrials / totalTrials : 0,
-        sendSuccess,
-        blockId,
-        participantId,
-        levelsCompleted: LEVELS,
-        categoriesPerLevel: LEVELS.map(lvl => {
-          if (lvl === 1) {
-            return currentLevelCategories.map(c => c.name);
-          } else {
-            return LEVEL_CONFIGS[lvl].categories.map(c => c.name);
-          }
-        }),
-        trialsPerCategory: config.trialsPerCategory,
+  setIsSending(true);
+  let sendSuccess = false;
+  if (blockId) {
+    try {
+      const trialsData = blockDataRef.current.map(t => ({
+        trial_number: t.global_trial_number,
+        level: t.level,
+        category_index: t.category_index,
+        category_name: t.category_name,
+        trial_in_category: t.trial_in_category,
+        stimulus: t.stimulus,
+        response: t.response,
+        correct_response: t.correct_response,
+        is_target: t.is_target,
+        reaction_time: t.reaction_time,
+        client_category_time: t.client_category_time,
+        client_stimulus_time: t.client_stimulus_time,
+        client_response_time: t.client_response_time,
+      }));
+      const response = await api.post('/gonogo/trials/batch/', {
+        block_id: blockId,
+        trials: trialsData
       });
+      if (response.status === 201) sendSuccess = true;
+    } catch (error) {
+      console.error('Ошибка отправки данных Go/NoGo:', error);
     }
-  }, [blockId, onBlockComplete, participantId, config.trialsPerCategory, currentLevelCategories]);
+  }
+  setIsSending(false);
+  if (blockId) {
+    try {
+      await api.post('/block/complete/', { block_id: blockId });
+    } catch (e) {
+      console.warn('Не удалось завершить блок (возможно, эндпоинт не реализован):', e);
+    }
+  }
+  if (onBlockComplete) {
+    const totalTrials = blockDataRef.current.length;
+    const correctTrials = blockDataRef.current.filter(t => t.is_correct).length;
+    onBlockComplete({
+      blockType: 'gonogo_task',
+      totalTrials,
+      completedTrials: totalTrials,
+      accuracy: totalTrials ? correctTrials / totalTrials : 0,
+      sendSuccess,
+      blockId,
+      participantId,
+      levelsCompleted: LEVELS,
+      categoriesPerLevel: LEVELS.map(lvl => {
+        if (lvl === 1) {
+          return currentLevelCategories.map(c => c.name);
+        } else {
+          return LEVEL_CONFIGS[lvl].categories.map(c => c.name);
+        }
+      }),
+      trialsPerCategory: config.trialsPerCategory,
+    });
+  }
+}, [blockId, onBlockComplete, participantId, config.trialsPerCategory, currentLevelCategories]);
 
   const startCurrentLevel = useCallback(() => {
     if (currentLevel === 1 && config.sourceType === 'words') {

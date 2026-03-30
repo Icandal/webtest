@@ -28,11 +28,11 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const currentLevelRef = useRef(0);
   const letters = ['A', 'B', 'C', 'D'];
 
-  useEffect(() => {
-    if (blockId) {
-      createNBackConfig();
-    }
-  }, [blockId]);
+  // useEffect(() => {
+  //   if (blockId) {
+  //     createNBackConfig();
+  //   }
+  // }, [blockId]);
 
   useEffect(() => {
     if (displayPhase === 'instructions') {
@@ -74,22 +74,22 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [displayPhase]);
 
-  const createNBackConfig = async () => {
-    try {
-      const config = {
-        n_level: NBACK_CONFIG.nLevels[0],
-        trials_per_block: NBACK_CONFIG.trialsPerLevel * NBACK_CONFIG.nLevels.length,
-        stimulus_duration: NBACK_CONFIG.stimulusDuration,
-        fixation_duration: NBACK_CONFIG.fixationDuration,
-        iti_duration: NBACK_CONFIG.itiDuration,
-        stimulus_type: 'letter',
-        target_stimuli: letters,
-        non_target_stimuli: letters,
-        target_probability: 0.3,
-      };
-      await nbackApi.createBlockConfig(blockId, config);
-    } catch (error) {}
-  };
+  // const createNBackConfig = async () => {
+  //   try {
+  //     const config = {
+  //       n_level: NBACK_CONFIG.nLevels[0],
+  //       trials_per_block: NBACK_CONFIG.trialsPerLevel * NBACK_CONFIG.nLevels.length,
+  //       stimulus_duration: NBACK_CONFIG.stimulusDuration,
+  //       fixation_duration: NBACK_CONFIG.fixationDuration,
+  //       iti_duration: NBACK_CONFIG.itiDuration,
+  //       stimulus_type: 'letter',
+  //       target_stimuli: letters,
+  //       non_target_stimuli: letters,
+  //       target_probability: 0.3,
+  //     };
+  //     await nbackApi.createBlockConfig(blockId, config);
+  //   } catch (error) {}
+  // };
 
   const startExperiment = () => {
     currentTrialRef.current = 1;
