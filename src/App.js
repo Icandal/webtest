@@ -182,7 +182,6 @@ const App = () => {
     <div className="App">
       {currentView === 'registration' && !isCheckingSession && (
         <header className="App-header">
-          <h1>Экспериментальная среда - LLM</h1>
           <div className="status-info">
             <span className={`status-indicator ${backendStatus.includes('✅') ? 'online' : backendStatus.includes('⚠️') ? 'warning' : 'offline'}`}>●</span>
             {backendStatus}
