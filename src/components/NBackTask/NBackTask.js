@@ -3,7 +3,7 @@ import './NBackTask.css';
 import { nbackApi } from '../utils/api';
 
 const NBACK_CONFIG = {
-  trialsPerLevel: 50,
+  trialsPerLevel: 5, //50
   stimulusDuration: 800,
   fixationDuration: 1500,
   itiDuration: 200,
@@ -287,7 +287,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         {displayPhase === 'fixation' && (
           <div className="nback-fixation">
             <div className="fixation-cross">+</div>
-            {responseFeedback && <div className="response-feedback">{responseFeedback}</div>}
+            {/* Сообщение "Ответ записан" удалено по требованию */}
           </div>
         )}
         {displayPhase === 'iti' && <div className="nback-iti"></div>}

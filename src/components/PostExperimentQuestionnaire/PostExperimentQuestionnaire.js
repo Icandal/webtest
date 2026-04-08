@@ -208,9 +208,9 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
               {shuffledQuestions[currentIndex]}
             </div>
             <div className="slider-container">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <span>Не согласен</span>
-                <span>Согласен</span>
+              <div className="slider-labels">
+                <span className="slider-label-left">Не согласен</span>
+                <span className="slider-label-right">Согласен</span>
               </div>
               <input
                 type="range"
