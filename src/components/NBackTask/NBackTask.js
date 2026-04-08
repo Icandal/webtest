@@ -6,7 +6,7 @@ const NBACK_CONFIG = {
   trialsPerLevel: 50,
   stimulusDuration: 800,
   fixationDuration: 1500,
-  itiDuration: 0,
+  itiDuration: 200,
   nLevels: [1, 2],
 };
 
@@ -28,6 +28,14 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const currentLevelRef = useRef(0);
   const letters = ['A', 'M', 'O', 'T'];
 
+  // Очистка всех таймаутов
+  const clearAllTimeouts = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
   useEffect(() => {
     if (displayPhase === 'instructions') {
       const interval = setInterval(() => setShowSpaceMessage(prev => !prev), 1000);
@@ -40,13 +48,16 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault();
 
+        // Старт эксперимента
         if (displayPhase === 'instructions' && !isRunningRef.current) {
           isRunningRef.current = true;
           startExperiment();
         }
+        // Ответ во время показа буквы
         else if (displayPhase === 'stimulus') {
           const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
           if (lastTrial && !lastTrial.responded) {
+            // Регистрируем ответ
             lastTrial.response = 'target';
             lastTrial.client_response_time = Date.now();
             lastTrial.responded = true;
@@ -59,13 +70,18 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             }
             setResponseFeedback('✓ Ответ зарегистрирован');
 
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            // Сбрасываем старые таймауты (включая тот, что должен был переключить на fixation)
+            clearAllTimeouts();
 
+            // Переключаемся на крестик
             setDisplayPhase('fixation');
 
+            // Через fixationDuration переходим в ITI, затем следующий триал
             timeoutRef.current = setTimeout(() => {
               setDisplayPhase('iti');
-              timeoutRef.current = setTimeout(nextTrial, NBACK_CONFIG.itiDuration);
+              timeoutRef.current = setTimeout(() => {
+                nextTrial();
+              }, NBACK_CONFIG.itiDuration);
             }, NBACK_CONFIG.fixationDuration);
           }
         }
@@ -118,20 +134,24 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       stimulus_type: 'letter',
     });
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    clearAllTimeouts();
+    // Таймаут: если за время stimulusDuration не было ответа, переходим к крестику
     timeoutRef.current = setTimeout(() => {
+      // Если мы всё ещё на фазе стимула (значит, ответа не было)
       if (displayPhase === 'stimulus') {
         setDisplayPhase('fixation');
         timeoutRef.current = setTimeout(() => {
           setDisplayPhase('iti');
-          timeoutRef.current = setTimeout(nextTrial, NBACK_CONFIG.itiDuration);
+          timeoutRef.current = setTimeout(() => {
+            nextTrial();
+          }, NBACK_CONFIG.itiDuration);
         }, NBACK_CONFIG.fixationDuration);
       }
     }, NBACK_CONFIG.stimulusDuration);
   };
 
   const nextTrial = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    clearAllTimeouts();
     const nextTrialNum = currentTrialRef.current + 1;
     if (nextTrialNum <= NBACK_CONFIG.trialsPerLevel) {
       currentTrialRef.current = nextTrialNum;
@@ -250,10 +270,14 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         {displayPhase === 'instructions' && (
           <div className="nback-instructions">
             <h2>Тест 2</h2>
+            <h3>Уровень: {displayLevel}-back</h3>
             {getInstructionText(displayLevel)}
             <div className="instruction-details">
+              <p>◉ Триалов в уровне: {NBACK_CONFIG.trialsPerLevel}</p>
               <p>◉ Отвечайте во время показа буквы</p>
               <p>◉ Реагируйте только на точные совпадения</p>
+              <p>◉ Всего уровней: {NBACK_CONFIG.nLevels.length}</p>
+              <p>◉ Текущий уровень: {currentLevelIndex + 1} из {NBACK_CONFIG.nLevels.length}</p>
             </div>
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
