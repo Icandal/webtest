@@ -194,6 +194,7 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
               Ответ будет записываться с помощью слайдера. Перемещайте ползунок вправо, если вы согласны
               с утверждением, и влево — если не согласны. Этот этап займёт не более 5 минут.
             </p>
+            <p>Помните, все ответы анонимны.</p> 
             <button className="start-btn" onClick={startQuestionnaire}>Начать</button>
           </div>
         );
@@ -207,6 +208,10 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
               {shuffledQuestions[currentIndex]}
             </div>
             <div className="slider-container">
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span>Не согласен</span>
+                <span>Согласен</span>
+              </div>
               <input
                 type="range"
                 min="1"

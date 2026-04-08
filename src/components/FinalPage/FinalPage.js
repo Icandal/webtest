@@ -1,14 +1,8 @@
 import './FinalPage.css';
 
 const FinalPage = ({ onSubmit, isSubmitting = false }) => {
-  const handleSubmit = () => {
+  const handleReturn = () => {
     onSubmit({ completed: true, timestamp: new Date().toISOString() });
-  };
-
-  const handleSkip = () => {
-    if (window.confirm('Завершить эксперимент без отправки результатов?')) {
-      onSubmit({ completed: false, timestamp: new Date().toISOString() });
-    }
   };
 
   return (
@@ -21,13 +15,12 @@ const FinalPage = ({ onSubmit, isSubmitting = false }) => {
           <div className="simple-info"><p>Все данные анонимны и обрабатываются конфиденциально.</p></div>
         </div>
         <div className="simple-actions">
-          <button onClick={handleSubmit} className="submit-btn" disabled={isSubmitting}>
-            {isSubmitting ? <><span className="spinner"></span>Отправка...</> : 'Отправить результаты'}
+          <button onClick={handleReturn} className="submit-btn" disabled={isSubmitting}>
+            {isSubmitting ? <><span className="spinner"></span>Загрузка...</> : 'Вернуться на главную страницу'}
           </button>
-          <button onClick={handleSkip} className="skip-btn" disabled={isSubmitting}>Завершить без отправки</button>
         </div>
         <div className="simple-footer">
-          <p>Вы можете закрыть эту страницу.<br />При возникновении вопросов: researcher@example.com</p>
+          <p>Вы можете закрыть эту страницу.<br />При возникновении вопросов: example@gmail.com</p>
         </div>
       </div>
     </div>

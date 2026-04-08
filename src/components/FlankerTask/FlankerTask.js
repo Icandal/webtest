@@ -3,7 +3,7 @@ import './FlankerTask.css';
 import api from '../utils/api';
 
 const FLANKER_CONFIG = {
-  trialsPerBlock: 200,
+  trialsPerBlock: 150,
   stimulusDuration: 2000,
   fixationDuration: 3000,
   stimuli: [
@@ -364,7 +364,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentPhase === 'fixation') {
       return (
         <div className="flanker-fixation">
-          <div className="fixation-cross">{currentStimulus}</div>
+          {/* <div className="fixation-cross">{currentStimulus}</div> */}
         </div>
       );
     }
