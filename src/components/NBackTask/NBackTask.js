@@ -4,9 +4,9 @@ import { nbackApi } from '../utils/api';
 
 const NBACK_CONFIG = {
   trialsPerLevel: 5, //50
-  stimulusDuration: 800,
-  fixationDuration: 1500,
-  itiDuration: 200,
+  stimulusDuration: 2000,
+  fixationDuration: 2000,
+  itiDuration: 0,
   nLevels: [1, 2],
 };
 

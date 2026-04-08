@@ -5,7 +5,7 @@ import api from '../utils/api';
 const FLANKER_CONFIG = {
   trialsPerBlock: 5, //150
   stimulusDuration: 2000,
-  fixationDuration: 3000,
+  fixationDuration: 2000,
   stimuli: [
     { type: 'congruent', stimulus: '←←←←←', correctResponse: 'left' },
     { type: 'congruent', stimulus: '→→→→→', correctResponse: 'right' },
