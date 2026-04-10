@@ -14,7 +14,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const [displayPhase, setDisplayPhase] = useState('instructions');
   const [displayLetter, setDisplayLetter] = useState('');
   const [displayLevel, setDisplayLevel] = useState(1);
-  const [displayTrial, setDisplayTrial] = useState(1);
   const [showSpaceMessage, setShowSpaceMessage] = useState(true);
   const [isSendingData, setIsSendingData] = useState(false);
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
@@ -27,7 +26,13 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const historyRef = useRef([]);
   const currentTrialRef = useRef(1);
   const currentLevelRef = useRef(0);
+  const phaseRef = useRef(displayPhase);
   const letters = ['A', 'M', 'O', 'T'];
+
+  // Следим за актуальной фазой
+  useEffect(() => {
+    phaseRef.current = displayPhase;
+  }, [displayPhase]);
 
   const clearAllTimeouts = useCallback(() => {
     if (stimulusTimeoutRef.current) {
@@ -56,7 +61,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     const nextTrialNum = currentTrialRef.current + 1;
     if (nextTrialNum <= NBACK_CONFIG.trialsPerLevel) {
       currentTrialRef.current = nextTrialNum;
-      setDisplayTrial(nextTrialNum);
       runTrial();
     } else {
       completeLevel();
@@ -128,7 +132,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const startExperiment = () => {
     currentTrialRef.current = 1;
-    setDisplayTrial(1);
     setDisplayLevel(NBACK_CONFIG.nLevels[currentLevelRef.current]);
     setCurrentLevelIndex(currentLevelRef.current);
     runTrial();
@@ -170,7 +173,8 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     });
 
     stimulusTimeoutRef.current = setTimeout(() => {
-      if (displayPhase === 'stimulus') {
+      // Используем ref для проверки актуальной фазы
+      if (phaseRef.current === 'stimulus') {
         handleNoResponse();
       }
     }, NBACK_CONFIG.stimulusDuration);
@@ -186,7 +190,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       setTimeout(() => {
         setDisplayPhase('instructions');
         setDisplayLevel(NBACK_CONFIG.nLevels[nextLevel]);
-        setDisplayTrial(1);
         setCurrentLevelIndex(nextLevel);
         setDisplayLetter('');
         isRunningRef.current = false;
