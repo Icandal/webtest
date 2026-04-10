@@ -96,9 +96,21 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const getShortHint = useCallback((categoryName) => {
     if (currentLevel === 1) {
-      return `→ – относится к категории «${categoryName}», ← – не относится`;
+      return (
+        <>
+          <span className="instruction-right">→ – относится к категории «{categoryName}»</span>
+          , 
+          <span className="instruction-left"> ← – не относится</span>
+        </>
+      );
     } else {
-      return '→ – ошибок нет, ← – есть ошибка';
+      return (
+        <>
+          <span className="instruction-right">→ – ошибок нет</span>
+          , 
+          <span className="instruction-left"> ← – есть ошибка</span>
+        </>
+      );
     }
   }, [currentLevel]);
 
@@ -149,8 +161,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             : '?';
         }
       }
-      // Для уровня 1: таргет = относится к категории → ответ 'yes' (→)
-      // Для уровней 2,3: таргет = содержит ошибку → ответ 'no' (←)
       let correctResponse;
       if (currentLevel === 1) {
         correctResponse = isTarget ? 'yes' : 'no';
@@ -229,7 +239,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   }, [blockId, currentLevel, currentCategoryIndex, config.itiDuration, clearTimer]);
 
   const handleNoResponse = useCallback((trial) => {
-    const isCorrect = !trial.isTarget; // для нетаргета молчание = правильно
+    const isCorrect = !trial.isTarget;
     const trialData = {
       experiment_block: parseInt(blockId),
       global_trial_number: blockDataRef.current.length + 1,
@@ -291,69 +301,68 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   }, [currentLevelIndex, clearTimer]);
 
   const completeBlock = useCallback(async () => {
-  setIsSending(true);
-  let sendSuccess = false;
-  if (blockId) {
-    try {
-      const trialsData = blockDataRef.current.map(t => ({
-        trial_number: t.global_trial_number,
-        level: t.level,
-        category_index: t.category_index,
-        category_name: t.category_name,
-        trial_in_category: t.trial_in_category,
-        stimulus: t.stimulus,
-        response: t.response,
-        correct_response: t.correct_response,
-        is_target: t.is_target,
-        reaction_time: t.reaction_time,
-        client_category_time: t.client_category_time,
-        client_stimulus_time: t.client_stimulus_time,
-        client_response_time: t.client_response_time,
-      }));
-      const response = await api.post('/gonogo/trials/batch/', {
-        block_id: blockId,
-        trials: trialsData
+    setIsSending(true);
+    let sendSuccess = false;
+    if (blockId) {
+      try {
+        const trialsData = blockDataRef.current.map(t => ({
+          trial_number: t.global_trial_number,
+          level: t.level,
+          category_index: t.category_index,
+          category_name: t.category_name,
+          trial_in_category: t.trial_in_category,
+          stimulus: t.stimulus,
+          response: t.response,
+          correct_response: t.correct_response,
+          is_target: t.is_target,
+          reaction_time: t.reaction_time,
+          client_category_time: t.client_category_time,
+          client_stimulus_time: t.client_stimulus_time,
+          client_response_time: t.client_response_time,
+        }));
+        const response = await api.post('/gonogo/trials/batch/', {
+          block_id: blockId,
+          trials: trialsData
+        });
+        if (response.status === 201) sendSuccess = true;
+      } catch (error) {
+        console.error('Ошибка отправки данных Go/NoGo:', error);
+      }
+    }
+    setIsSending(false);
+    if (blockId) {
+      try {
+        await api.post('/block/complete/', { block_id: blockId });
+      } catch (e) {
+        console.warn('Не удалось завершить блок (возможно, эндпоинт не реализован):', e);
+      }
+    }
+    if (onBlockComplete) {
+      const totalTrials = blockDataRef.current.length;
+      const correctTrials = blockDataRef.current.filter(t => t.is_correct).length;
+      onBlockComplete({
+        blockType: 'gonogo_task',
+        totalTrials,
+        completedTrials: totalTrials,
+        accuracy: totalTrials ? correctTrials / totalTrials : 0,
+        sendSuccess,
+        blockId,
+        participantId,
+        levelsCompleted: LEVELS,
+        categoriesPerLevel: LEVELS.map(lvl => {
+          if (lvl === 1) {
+            return currentLevelCategories.map(c => c.name);
+          } else {
+            return LEVEL_CONFIGS[lvl].categories.map(c => c.name);
+          }
+        }),
+        trialsPerCategory: config.trialsPerCategory,
       });
-      if (response.status === 201) sendSuccess = true;
-    } catch (error) {
-      console.error('Ошибка отправки данных Go/NoGo:', error);
     }
-  }
-  setIsSending(false);
-  if (blockId) {
-    try {
-      await api.post('/block/complete/', { block_id: blockId });
-    } catch (e) {
-      console.warn('Не удалось завершить блок (возможно, эндпоинт не реализован):', e);
-    }
-  }
-  if (onBlockComplete) {
-    const totalTrials = blockDataRef.current.length;
-    const correctTrials = blockDataRef.current.filter(t => t.is_correct).length;
-    onBlockComplete({
-      blockType: 'gonogo_task',
-      totalTrials,
-      completedTrials: totalTrials,
-      accuracy: totalTrials ? correctTrials / totalTrials : 0,
-      sendSuccess,
-      blockId,
-      participantId,
-      levelsCompleted: LEVELS,
-      categoriesPerLevel: LEVELS.map(lvl => {
-        if (lvl === 1) {
-          return currentLevelCategories.map(c => c.name);
-        } else {
-          return LEVEL_CONFIGS[lvl].categories.map(c => c.name);
-        }
-      }),
-      trialsPerCategory: config.trialsPerCategory,
-    });
-  }
-}, [blockId, onBlockComplete, participantId, config.trialsPerCategory, currentLevelCategories]);
+  }, [blockId, onBlockComplete, participantId, config.trialsPerCategory, currentLevelCategories]);
 
   const startCurrentLevel = useCallback(() => {
     if (currentLevel === 1 && config.sourceType === 'words') {
-      // Выбираем 3 случайные категории
       const selected = selectRandomCategories(stimuli.words.categories, config.numCategoriesToSelect);
       setCurrentLevelCategories(selected);
     } else {
@@ -422,10 +431,10 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
         if (currentLevel === 1) {
           instructionText = (
             <>
-              <p> В этом тесте вам будет показана категория – животные, растения, и т.д.
-        Затем вам будут по одному показаны слова.
-        Вам нужно определить, относится ли каждое слово к объявленной категории.</p>
-              <p>Если да – нажмите <strong>→</strong>, если нет – нажмите <strong>←</strong>.</p>
+              <p>В этом тесте вам будет показана категория – животные, растения, и т.д.
+                Затем вам будут по одному показаны слова.
+                Вам нужно определить, относится ли каждое слово к объявленной категории.</p>
+              <p>Если да – <span className="instruction-right">нажмите <strong>→</strong></span>, если нет – <span className="instruction-left">нажмите <strong>←</strong></span>.</p>
               <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
               <p><strong>Время теста составит примерно 5 минут.</strong></p>
             </>
@@ -434,7 +443,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           instructionText = (
             <>
               <p>В данном задании на экране будут показаны словосочетания и простые короткие предложения. Ваша задача — определить, содержит ли словосочетание или предложение ошибку (любую: орфографическую, грамматическую, пунктуационную и т.д.) или ошибок нет.</p>
-              <p>Нажмите <strong>→</strong>, если ошибок нет, и <strong>←</strong>, если ошибка есть.</p>
+              <p><span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>, <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.</p>
               <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
               <p><strong>Время теста составит примерно 2 минуты.</strong></p>
             </>
@@ -443,7 +452,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           instructionText = (
             <>
               <p>В данном задании на экране будут показаны предложения. Ваша задача — определить, содержит ли эти предложения ошибку (любую: орфографическую, грамматическую, пунктуационную и т.д.) или ошибок нет.</p>
-              <p>Нажмите <strong>→</strong>, если ошибок нет, и <strong>←</strong>, если ошибка есть.</p>
+              <p><span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>, <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.</p>
               <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
               <p><strong>Время теста составит примерно 2 минуты.</strong></p>
             </>

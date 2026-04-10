@@ -411,3 +411,17 @@
     padding-top: 20px;
   }
 }
+.instruction-left {
+  color: #dc3545;
+  font-weight: bold;
+}
+.instruction-right {
+  color: #28a745;
+  font-weight: bold;
+}
+.key-left {
+  background-color: #dc3545;
+}
+.key-right {
+  background-color: #28a745;
+}

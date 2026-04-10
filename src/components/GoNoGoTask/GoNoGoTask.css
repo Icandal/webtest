@@ -211,3 +211,18 @@
     font-size: 48px;
   }
 }
+
+.instruction-left {
+  color: #dc3545;
+  font-weight: bold;
+}
+.instruction-right {
+  color: #28a745;
+  font-weight: bold;
+}
+.key-yes {
+  background-color: #28a745;
+}
+.key-no {
+  background-color: #dc3545;
+}

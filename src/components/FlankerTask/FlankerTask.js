@@ -314,26 +314,27 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
   const renderPhaseContent = () => {
     if (currentPhase === 'instructions') {
       return (
-        <div className="flanker-instructions">
-          <h3 style={{ fontWeight: 'bold' }}>Тест 1</h3>
-          <p>
-            На экране будут появляться последовательности из пяти стрелок, например {'←←→←←'} или {'→→←→→'}.<br />
-            Ваша задача определить, в какую сторону направлена центральная стрелка (
-            {highlightCentralArrow('→→←→→')}) и нажать соответствующую кнопку.<br />
-            Если стрелка направлена влево – нажмите <strong>←</strong>, если вправо – нажмите <strong>→</strong>.<br />
-            <strong>Важно</strong> – решение нужно принять как можно быстрее, но правильно!<br />
-            Время теста составит примерно 5 минут.
-          </p>
-          <div className="instruction-keys">
-            <div className="key-group">
-              <span className="key">←</span>
-              <span className="key-label">Стрелка влево</span>
+          <div className="flanker-instructions">
+            <h3 style={{ fontWeight: 'bold' }}>Тест 1</h3>
+            <p>
+              На экране будут появляться последовательности из пяти стрелок, например {'←←←←←'} или {'→→→→→'}.<br />
+              Ваша задача определить, в какую сторону направлена центральная стрелка (
+              {highlightCentralArrow('→→←→→')}) и нажать соответствующую кнопку.<br />
+              Если стрелка направлена влево – <span className="instruction-left">нажмите <strong>←</strong></span>, 
+              если вправо – <span className="instruction-right">нажмите <strong>→</strong></span>.<br />
+              <strong>Важно</strong> – решение нужно принять как можно быстрее, но правильно!<br />
+              Время теста составит примерно 5 минут.
+            </p>
+            <div className="instruction-keys">
+              <div className="key-group">
+                <span className="key key-left">←</span>
+                <span className="key-label instruction-left">Стрелка влево</span>
+              </div>
+              <div className="key-group">
+                <span className="key key-right">→</span>
+                <span className="key-label instruction-right">Стрелка вправо</span>
+              </div>
             </div>
-            <div className="key-group">
-              <span className="key">→</span>
-              <span className="key-label">Стрелка вправо</span>
-            </div>
-          </div>
           {showFullscreenPrompt && !isFullscreen && (
             <div className="fullscreen-prompt-overlay">
               <div className="fullscreen-prompt-content">

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './NBackTask.css';
 import { nbackApi } from '../utils/api';
 
 const NBACK_CONFIG = {
-  trialsPerLevel: 5, //50
+  trialsPerLevel: 5, // 50 в реальном эксперименте
   stimulusDuration: 2000,
   fixationDuration: 2000,
   itiDuration: 0,
@@ -16,7 +16,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const [displayLevel, setDisplayLevel] = useState(1);
   const [displayTrial, setDisplayTrial] = useState(1);
   const [showSpaceMessage, setShowSpaceMessage] = useState(true);
-  const [responseFeedback, setResponseFeedback] = useState('');
   const [isSendingData, setIsSendingData] = useState(false);
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
 
@@ -42,47 +41,68 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, [displayPhase]);
 
+  const handleNoResponse = useCallback(() => {
+    const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
+    if (lastTrial && !lastTrial.responded) {
+      lastTrial.response = null;
+      lastTrial.responded = true;
+      lastTrial.client_response_time = null;
+      if (lastTrial.is_target) {
+        lastTrial.is_correct = false;
+        lastTrial.is_miss = true;
+      } else {
+        lastTrial.is_correct = true;
+        lastTrial.is_correct_rejection = true;
+      }
+    }
+    setDisplayPhase('fixation');
+    timeoutRef.current = setTimeout(() => {
+      setDisplayPhase('iti');
+      timeoutRef.current = setTimeout(() => {
+        nextTrial();
+      }, NBACK_CONFIG.itiDuration);
+    }, NBACK_CONFIG.fixationDuration);
+  }, []);
+
+  const handleResponse = useCallback(() => {
+    const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
+    if (lastTrial && !lastTrial.responded) {
+      lastTrial.response = 'target';
+      lastTrial.client_response_time = Date.now();
+      lastTrial.responded = true;
+      if (lastTrial.is_target) {
+        lastTrial.is_correct = true;
+        lastTrial.is_hit = true;
+      } else {
+        lastTrial.is_correct = false;
+        lastTrial.is_false_alarm = true;
+      }
+      clearAllTimeouts();
+      setDisplayPhase('fixation');
+      timeoutRef.current = setTimeout(() => {
+        setDisplayPhase('iti');
+        timeoutRef.current = setTimeout(() => {
+          nextTrial();
+        }, NBACK_CONFIG.itiDuration);
+      }, NBACK_CONFIG.fixationDuration);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault();
-
         if (displayPhase === 'instructions' && !isRunningRef.current) {
           isRunningRef.current = true;
           startExperiment();
-        }
-        else if (displayPhase === 'stimulus') {
-          const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
-          if (lastTrial && !lastTrial.responded) {
-            lastTrial.response = 'target';
-            lastTrial.client_response_time = Date.now();
-            lastTrial.responded = true;
-            if (lastTrial.is_target) {
-              lastTrial.is_correct = true;
-              lastTrial.is_hit = true;
-            } else {
-              lastTrial.is_correct = false;
-              lastTrial.is_false_alarm = true;
-            }
-            setResponseFeedback();
-
-            clearAllTimeouts();
-
-            setDisplayPhase('fixation');
-
-            timeoutRef.current = setTimeout(() => {
-              setDisplayPhase('iti');
-              timeoutRef.current = setTimeout(() => {
-                nextTrial();
-              }, NBACK_CONFIG.itiDuration);
-            }, NBACK_CONFIG.fixationDuration);
-          }
+        } else if (displayPhase === 'stimulus') {
+          handleResponse();
         }
       }
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [displayPhase]);
+  }, [displayPhase, handleResponse]);
 
   const startExperiment = () => {
     currentTrialRef.current = 1;
@@ -93,7 +113,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   };
 
   const runTrial = () => {
-    setResponseFeedback('');
     const nLevel = NBACK_CONFIG.nLevels[currentLevelRef.current];
     const isTarget = Math.random() < 0.3 && historyRef.current.length >= nLevel;
     let randomLetter;
@@ -110,7 +129,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     setDisplayPhase('stimulus');
 
     const startTime = Date.now();
-    const stimulusTime = startTime + 100;
+    const stimulusTime = startTime;
     const fixationTime = stimulusTime + NBACK_CONFIG.stimulusDuration;
 
     experimentDataRef.current.push({
@@ -130,13 +149,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     clearAllTimeouts();
     timeoutRef.current = setTimeout(() => {
       if (displayPhase === 'stimulus') {
-        setDisplayPhase('fixation');
-        timeoutRef.current = setTimeout(() => {
-          setDisplayPhase('iti');
-          timeoutRef.current = setTimeout(() => {
-            nextTrial();
-          }, NBACK_CONFIG.itiDuration);
-        }, NBACK_CONFIG.fixationDuration);
+        handleNoResponse();
       }
     }, NBACK_CONFIG.stimulusDuration);
   };
@@ -195,7 +208,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       const result = await nbackApi.sendBatchData(dataToSend);
       return result.success;
     } catch (error) {
-      setResponseFeedback(`❌ Ошибка: ${error.message}`);
+      console.error('Ошибка отправки NBack:', error);
       return false;
     } finally {
       setIsSendingData(false);
@@ -224,35 +237,31 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
           <p>
             <strong>Тест 2 (1‑back):</strong> Вам будут по одному предъявляться буквы,
             и ваша задача — сравнивать текущую букву с той, которая была показана перед ней.
-            При совпадении, нажмите «Пробел», если не совпадают — ничего не нажимайте.
+            При совпадении нажмите <span className="key-yes">ПРОБЕЛ</span>.
           </p>
           <p>
             Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б‑
             <span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным),
             а в А‑В‑Б‑А – нет.
           </p>
-          <p>Отвечайте нажатием пробела сразу при появлении буквы, во время крестика (+) только готовьтесь.</p>
-          <p>Старайтесь отвечать как можно быстрее и точнее...</p>
         </>
       );
-    } else if (level === 2) {
+    } else {
       return (
         <>
           <p>
             <strong>Тест 2 (2‑back):</strong> Вам будут по одному предъявляться буквы,
             и ваша задача — сравнивать текущую букву с той, которая была показана два шага назад.
+            При совпадении нажмите <span className="key-yes">ПРОБЕЛ</span>.
           </p>
           <p>
             Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б‑
             <span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным),
             а в А‑В‑Б‑А – нет.
           </p>
-          <p>Отвечайте нажатием пробела сразу при появлении буквы, во время крестика (+) только готовьтесь.</p>
-          <p>Старайтесь отвечать как можно быстрее и точнее...</p>
         </>
       );
     }
-    return null;
   };
 
   return (
@@ -264,11 +273,8 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             <h3>Уровень: {displayLevel}-back</h3>
             {getInstructionText(displayLevel)}
             <div className="instruction-details">
-              <p>◉ Триалов в уровне: {NBACK_CONFIG.trialsPerLevel}</p>
               <p>◉ Отвечайте во время показа буквы</p>
               <p>◉ Реагируйте только на точные совпадения</p>
-              <p>◉ Всего уровней: {NBACK_CONFIG.nLevels.length}</p>
-              <p>◉ Текущий уровень: {currentLevelIndex + 1} из {NBACK_CONFIG.nLevels.length}</p>
             </div>
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
@@ -287,7 +293,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         {displayPhase === 'fixation' && (
           <div className="nback-fixation">
             <div className="fixation-cross">+</div>
-            {/* Сообщение "Ответ записан" удалено по требованию */}
           </div>
         )}
         {displayPhase === 'iti' && <div className="nback-iti"></div>}
