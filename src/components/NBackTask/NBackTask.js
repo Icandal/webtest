@@ -251,7 +251,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
           <p>
             <strong>Тест 2 (1‑back):</strong> Вам будут по одному предъявляться буквы,
             и ваша задача — сравнивать текущую букву с той, которая была показана перед ней.
-            При совпадении нажмите <span className="key-yes">ПРОБЕЛ</span>.
+            При совпадении нажмите ПРОБЕЛ.
           </p>
           <p>
             Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б‑
@@ -266,7 +266,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
           <p>
             <strong>Тест 2 (2‑back):</strong> Вам будут по одному предъявляться буквы,
             и ваша задача — сравнивать текущую букву с той, которая была показана два шага назад.
-            При совпадении нажмите <span className="key-yes">ПРОБЕЛ</span>.
+            При совпадении нажмите ПРОБЕЛ.
           </p>
           <p>
             Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б‑
