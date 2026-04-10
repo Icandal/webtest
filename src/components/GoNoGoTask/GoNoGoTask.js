@@ -462,6 +462,19 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           <div className="gonogo-instructions">
             <h2>Тест 3 — {config.name}</h2>
             {instructionText}
+            
+            {/* Визуальный блок с клавишами (как во FlankerTask) */}
+            <div className="instruction-keys">
+              <div className="key-group">
+                <span className="key key-left">←</span>
+                <span className="key-label instruction-left">Нет / есть ошибка</span>
+              </div>
+              <div className="key-group">
+                <span className="key key-right">→</span>
+                <span className="key-label instruction-right">Да / ошибок нет</span>
+              </div>
+            </div>
+            
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {LEVELS.length}</div>
             <p className="space-message">[ПРОБЕЛ] начать уровень</p>
             {isSending && <p>Отправка...</p>}

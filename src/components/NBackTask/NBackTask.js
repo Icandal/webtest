@@ -278,7 +278,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             </div>
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
-                Нажмите <span className="space-key">ПРОБЕЛ</span> чтобы начать
+                Нажмите ПРОБЕЛ чтобы начать
               </p>
             </div>
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {NBACK_CONFIG.nLevels.length}</div>

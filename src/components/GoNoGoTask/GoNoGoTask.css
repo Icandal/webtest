@@ -226,3 +226,54 @@
 .key-no {
   background-color: #dc3545;
 }
+
+.instruction-keys {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin: 25px 0;
+}
+
+.key-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.key {
+  display: inline-block;
+  padding: 10px 15px;
+  background: #333;
+  color: white;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 18px;
+  min-width: 40px;
+  margin: 0 5px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.key-left {
+  background-color: #dc3545;
+}
+
+.key-right {
+  background-color: #28a745;
+}
+
+.key-label {
+  color: #555;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.instruction-left {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.instruction-right {
+  color: #28a745;
+  font-weight: bold;
+}
