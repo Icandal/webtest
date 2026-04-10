@@ -21,18 +21,28 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const experimentDataRef = useRef([]);
   const isRunningRef = useRef(false);
-  const timeoutRef = useRef(null);
+  const stimulusTimeoutRef = useRef(null);
+  const fixationTimeoutRef = useRef(null);
+  const itiTimeoutRef = useRef(null);
   const historyRef = useRef([]);
   const currentTrialRef = useRef(1);
   const currentLevelRef = useRef(0);
   const letters = ['A', 'M', 'O', 'T'];
 
-  const clearAllTimeouts = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  const clearAllTimeouts = useCallback(() => {
+    if (stimulusTimeoutRef.current) {
+      clearTimeout(stimulusTimeoutRef.current);
+      stimulusTimeoutRef.current = null;
     }
-  };
+    if (fixationTimeoutRef.current) {
+      clearTimeout(fixationTimeoutRef.current);
+      fixationTimeoutRef.current = null;
+    }
+    if (itiTimeoutRef.current) {
+      clearTimeout(itiTimeoutRef.current);
+      itiTimeoutRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (displayPhase === 'instructions') {
@@ -40,6 +50,18 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       return () => clearInterval(interval);
     }
   }, [displayPhase]);
+
+  const nextTrial = useCallback(() => {
+    clearAllTimeouts();
+    const nextTrialNum = currentTrialRef.current + 1;
+    if (nextTrialNum <= NBACK_CONFIG.trialsPerLevel) {
+      currentTrialRef.current = nextTrialNum;
+      setDisplayTrial(nextTrialNum);
+      runTrial();
+    } else {
+      completeLevel();
+    }
+  }, [clearAllTimeouts]);
 
   const handleNoResponse = useCallback(() => {
     const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
@@ -56,13 +78,13 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       }
     }
     setDisplayPhase('fixation');
-    timeoutRef.current = setTimeout(() => {
+    fixationTimeoutRef.current = setTimeout(() => {
       setDisplayPhase('iti');
-      timeoutRef.current = setTimeout(() => {
+      itiTimeoutRef.current = setTimeout(() => {
         nextTrial();
       }, NBACK_CONFIG.itiDuration);
     }, NBACK_CONFIG.fixationDuration);
-  }, []);
+  }, [nextTrial]);
 
   const handleResponse = useCallback(() => {
     const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
@@ -79,14 +101,14 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       }
       clearAllTimeouts();
       setDisplayPhase('fixation');
-      timeoutRef.current = setTimeout(() => {
+      fixationTimeoutRef.current = setTimeout(() => {
         setDisplayPhase('iti');
-        timeoutRef.current = setTimeout(() => {
+        itiTimeoutRef.current = setTimeout(() => {
           nextTrial();
         }, NBACK_CONFIG.itiDuration);
       }, NBACK_CONFIG.fixationDuration);
     }
-  }, []);
+  }, [clearAllTimeouts, nextTrial]);
 
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -113,6 +135,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   };
 
   const runTrial = () => {
+    clearAllTimeouts();
     const nLevel = NBACK_CONFIG.nLevels[currentLevelRef.current];
     const isTarget = Math.random() < 0.3 && historyRef.current.length >= nLevel;
     let randomLetter;
@@ -146,27 +169,15 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       stimulus_type: 'letter',
     });
 
-    clearAllTimeouts();
-    timeoutRef.current = setTimeout(() => {
+    stimulusTimeoutRef.current = setTimeout(() => {
       if (displayPhase === 'stimulus') {
         handleNoResponse();
       }
     }, NBACK_CONFIG.stimulusDuration);
   };
 
-  const nextTrial = () => {
-    clearAllTimeouts();
-    const nextTrialNum = currentTrialRef.current + 1;
-    if (nextTrialNum <= NBACK_CONFIG.trialsPerLevel) {
-      currentTrialRef.current = nextTrialNum;
-      setDisplayTrial(nextTrialNum);
-      runTrial();
-    } else {
-      completeLevel();
-    }
-  };
-
   const completeLevel = () => {
+    clearAllTimeouts();
     const nextLevel = currentLevelRef.current + 1;
     if (nextLevel < NBACK_CONFIG.nLevels.length) {
       currentLevelRef.current = nextLevel;
@@ -278,7 +289,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             </div>
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
-                Нажмите ПРОБЕЛ чтобы начать
+                Нажмите <span className="space-key">ПРОБЕЛ</span> чтобы начать
               </p>
             </div>
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {NBACK_CONFIG.nLevels.length}</div>

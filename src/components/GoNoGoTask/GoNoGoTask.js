@@ -487,9 +487,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
               <div className="category-label">Категория</div>
               <div className="category-name">{currentCategory?.name}</div>
               <p className="space-message">[ПРОБЕЛ] начать тест</p>
-              <div className="category-instruction">
-                {getShortHint(currentCategory?.name)}
-              </div>
             </div>
           </div>
         );
