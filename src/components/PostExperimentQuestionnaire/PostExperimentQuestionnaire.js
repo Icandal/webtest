@@ -185,8 +185,8 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
             <p>
               В следующих слайдах вам будет предложено ответить на несколько простых вопросов о ваших привычках
               и опыте использования современных продуктов искусственного интеллекта (ИИ), включая языковые модели
-              и интеллектуальные сервисы, такие как ChatGPT, DeepSeek, GigaChat, Google Gemini, Microsoft Copilot,
-              Claude, Perplexity, а также голосовые ассистенты (например, Siri, Alexa, Алиса, Google Assistant)
+              и интеллектуальные сервисы, такие как <b> ChatGPT, DeepSeek, GigaChat, Google Gemini, Microsoft Copilot,
+              Claude, Perplexity, </b> а также голосовые ассистенты (например,<b> Siri, Alexa, Алиса, Google Assistant</b>)
               и другие подобные решения. Пожалуйста, отвечайте честно и внимательно, выбирая вариант, который
               наиболее точно отражает ваш опыт.
             </p>

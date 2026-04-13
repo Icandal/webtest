@@ -249,8 +249,8 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       return (
         <>
           <p>
-            <strong>Тест 2 (1‑back):</strong> Вам будут по одному предъявляться буквы,
-            и ваша задача — сравнивать текущую букву с той, которая была показана перед ней.
+            <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы,
+            и ваша задача — сравнивать текущую букву с той, которая была <b> показана перед ней. </b>
             При совпадении нажмите ПРОБЕЛ.
           </p>
           <p>
@@ -264,8 +264,8 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       return (
         <>
           <p>
-            <strong>Тест 2 (2‑back):</strong> Вам будут по одному предъявляться буквы,
-            и ваша задача — сравнивать текущую букву с той, которая была показана два шага назад.
+            <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы,
+            и ваша задача — сравнивать текущую букву с той, которая была<b> показана два шага назад. </b>
             При совпадении нажмите ПРОБЕЛ.
           </p>
           <p>
@@ -284,7 +284,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         {displayPhase === 'instructions' && (
           <div className="nback-instructions">
             <h2>Тест 2</h2>
-            <h3>Уровень: {displayLevel}-back</h3>
+            <h3>Сложность: {displayLevel}</h3>
             {getInstructionText(displayLevel)}
             <div className="instruction-details">
               <p>◉ Отвечайте во время показа буквы</p>
