@@ -3,7 +3,7 @@ import './FlankerTask.css';
 import api from '../utils/api';
 
 const FLANKER_CONFIG = {
-  trialsPerBlock: 5, //150
+  trialsPerBlock: 150, //150
   stimulusDuration: 2000,
   fixationDuration: 2000,
   stimuli: [

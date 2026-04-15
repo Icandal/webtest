@@ -3,7 +3,7 @@ import './NBackTask.css';
 import { nbackApi } from '../utils/api';
 
 const NBACK_CONFIG = {
-  trialsPerLevel: 5, // 50 в реальном эксперименте
+  trialsPerLevel: 50, // 50 в реальном эксперименте
   stimulusDuration: 2000,
   fixationDuration: 2000,
   itiDuration: 0,
