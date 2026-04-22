@@ -3,9 +3,9 @@ import './FlankerTask.css';
 import api from '../utils/api';
 
 const FLANKER_CONFIG = {
-  trialsPerBlock: 150, //150
+  trialsPerBlock: 100,
   stimulusDuration: 2000,
-  fixationDuration: 2000,
+  // fixationDuration удалён – теперь выбирается случайно для каждой пробы
   stimuli: [
     { type: 'congruent', stimulus: '←←←←←', correctResponse: 'left' },
     { type: 'congruent', stimulus: '→→→→→', correctResponse: 'right' },
@@ -35,6 +35,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
   const fixationTimeoutRef = useRef(null);
   const responseReceivedRef = useRef(false);
   const containerRef = useRef(null);
+  const currentFixationDurationRef = useRef(2000); // для хранения текущей длительности фиксации (если нужно для логов)
 
   const generateTrials = useCallback(() => {
     const generatedTrials = [];
@@ -147,6 +148,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
         client_stimulus_time: t.client_stimulus_time,
         client_fixation_time: t.client_fixation_time,
         client_response_time: t.client_response_time,
+        fixation_duration: t.fixation_duration, // добавим для аналитики
       }));
       const response = await api.post('/trials/batch/', {
         block_id: blockId,
@@ -176,7 +178,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, [blockId, onBlockComplete, trials.length]);
 
-  const saveTrialData = useCallback((trialData, responseMade, responseTime, clientResponseTime) => {
+  const saveTrialData = useCallback((trialData, responseMade, responseTime, clientResponseTime, fixationDurationUsed) => {
     return {
       experiment_block: parseInt(blockId),
       trial_number: trialData.trialNumber,
@@ -189,11 +191,16 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
       client_stimulus_time: stimulusShownRef.current,
       client_fixation_time: fixationShownRef.current,
       client_response_time: clientResponseTime,
+      fixation_duration: fixationDurationUsed,
     };
   }, [blockId]);
 
   const goToFixationAndNext = useCallback((nextTrialIndex, isLastTrial) => {
     if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
+    
+    // Случайный выбор длительности фиксации: 1000 или 2000 мс
+    const fixationDuration = Math.random() < 0.5 ? 1000 : 2000;
+    currentFixationDurationRef.current = fixationDuration;
     
     setCurrentPhase('fixation');
     setCurrentStimulus('+');
@@ -206,14 +213,15 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
         setCurrentTrial(nextTrialIndex);
         startTrial(nextTrialIndex);
       }
-    }, FLANKER_CONFIG.fixationDuration);
+    }, fixationDuration);
   }, [completeBlock]);
 
   const handleNoResponse = useCallback((trialIndex, trialData) => {
     if (responseReceivedRef.current) return;
     responseReceivedRef.current = true;
     
-    blockDataRef.current.push(saveTrialData(trialData, null, null, null));
+    // Для отсутствия ответа фиксация могла быть разной – передаём последнюю использованную длительность
+    blockDataRef.current.push(saveTrialData(trialData, null, null, null, currentFixationDurationRef.current));
     
     const nextTrial = trialIndex + 1;
     const isLast = nextTrial >= trials.length;
@@ -227,7 +235,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
     
     const clientResponseTime = Date.now();
-    blockDataRef.current.push(saveTrialData(trialData, responseMade, responseTime, clientResponseTime));
+    blockDataRef.current.push(saveTrialData(trialData, responseMade, responseTime, clientResponseTime, currentFixationDurationRef.current));
     
     const nextTrial = trialIndex + 1;
     const isLast = nextTrial >= trials.length;
@@ -365,6 +373,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentPhase === 'fixation') {
       return (
         <div className="flanker-fixation">
+          {/* Крестик скрыт, но можно раскомментировать, если нужен визуальный фиксатор */}
           {/* <div className="fixation-cross">{currentStimulus}</div> */}
         </div>
       );

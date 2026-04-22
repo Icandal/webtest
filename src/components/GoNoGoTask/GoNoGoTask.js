@@ -5,7 +5,7 @@ import api from '../utils/api';
 
 const LEVEL_CONFIGS = {
   1: {
-    name: 'Категории',
+    name: 'Тест 3 - Категории',
     sourceType: 'words',
     numCategoriesToSelect: 3,
     trialsPerCategory: 30,
@@ -16,7 +16,7 @@ const LEVEL_CONFIGS = {
     keys: { yes: ['ArrowRight'], no: ['ArrowLeft'] }
   },
   2: {
-    name: 'Предложения с ошибками',
+    name: 'Тест 4 - Предложения с ошибками',
     sourceType: 'phrases',
     trialsPerCategory: 30,
     categoryDuration: 1000,
@@ -33,7 +33,7 @@ const LEVEL_CONFIGS = {
     keys: { yes: ['ArrowRight'], no: ['ArrowLeft'] }
   },
   3: {
-    name: 'Сложные предложения',
+    name: 'Тест 5 - Сложные предложения',
     sourceType: 'sentences',
     trialsPerCategory: 30,
     categoryDuration: 1000,
@@ -193,9 +193,17 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     setCurrentWord('');
     responseReceivedRef.current = false;
     clearTimer();
-    setCurrentPhase('category');
     categoryStartTimeRef.current = Date.now();
-  }, [currentLevelCategories, generateTrialsForCategory, clearTimer]);
+
+    if (currentLevel !== 1) {
+      // Для уровней 2 и 3 сразу запускаем пробы без экрана категории
+      setCurrentPhase('stimulus');
+      runTrialRef.current(0);
+    } else {
+      // Для уровня 1 показываем экран категории
+      setCurrentPhase('category');
+    }
+  }, [currentLevelCategories, generateTrialsForCategory, clearTimer, currentLevel]);
 
   const runTrial = useCallback((trialIndex) => {
     const trial = trialsRef.current[trialIndex];
@@ -460,7 +468,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
         }
         return (
           <div className="gonogo-instructions">
-            <h2>Тест 3 — {config.name}</h2>
+            <h2>{config.name}</h2>
             {instructionText}
             
             {/* Визуальный блок с клавишами (как во FlankerTask) */}
@@ -486,6 +494,9 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             <div className="category-container">
               <div className="category-label">Категория</div>
               <div className="category-name">{currentCategory?.name}</div>
+              {currentCategory?.name === 'Фрукты' && (
+                <div className="category-reminder">Помните, ягоды — не фрукты</div>
+              )}
               <p className="space-message">[ПРОБЕЛ] начать тест</p>
             </div>
           </div>

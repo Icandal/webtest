@@ -254,7 +254,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             При совпадении нажмите ПРОБЕЛ.
           </p>
           <p>
-            Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б‑
+            Например, в последовательности А‑Б-<span style={{color: 'green'}}>В</span>
             <span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным),
             а в А‑В‑Б‑А – нет.
           </p>
@@ -287,8 +287,9 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             <h3>Сложность: {displayLevel}</h3>
             {getInstructionText(displayLevel)}
             <div className="instruction-details">
-              <p>◉ Отвечайте во время показа буквы</p>
+              <p>◉ Отвечайте как можно быстрее но правильно</p>
               <p>◉ Реагируйте только на точные совпадения</p>
+              <p>◉ Если нет совпадения - ничего не нажимайте</p>
             </div>
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
