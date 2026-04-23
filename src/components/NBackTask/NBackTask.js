@@ -254,7 +254,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             При совпадении нажмите ПРОБЕЛ.
           </p>
           <p>
-            Например, в последовательности А‑Б-<span style={{color: 'green'}}>В</span>
+            Например, в последовательности А‑Б-<span style={{color: 'green'}}>В</span>-
             <span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным),
             а в А‑В‑Б‑А – нет.
           </p>
