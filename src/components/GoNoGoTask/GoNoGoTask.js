@@ -167,7 +167,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     const category = categories[index];
     const trials = generateTrialsForCategory(category);
     
-    // Синхронное обновление ref-ов, чтобы они были доступны сразу
+    // Синхронное обновление ref
     trialsRef.current = trials;
     
     setCurrentCategoryIndex(index);
@@ -180,11 +180,13 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     categoryStartTimeRef.current = Date.now();
 
     if (currentLevel !== 1) {
-      // Для уровней 2 и 3 сразу запускаем пробы без экрана категории
+      // Для уровней 2 и 3 сразу запускаем пробы
       setCurrentPhase('stimulus');
-      runTrialRef.current(0);
+      // Добавим микро-задержку, чтобы React успел обновить состояние (но ref уже обновлён)
+      setTimeout(() => {
+        if (runTrialRef.current) runTrialRef.current(0);
+      }, 0);
     } else {
-      // Для уровня 1 показываем экран категории
       setCurrentPhase('category');
     }
   }, [currentLevelCategories, generateTrialsForCategory, clearTimer, currentLevel]);
@@ -364,14 +366,14 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     experimentStartedRef.current = true;
   }, [currentLevel, config]);
 
-  // Эффект для уровня 1: показываем экран категории после загрузки категорий
+  // Эффект для уровня 1
   useEffect(() => {
     if (experimentStartedRef.current && currentLevel === 1 && currentLevelCategories.length > 0) {
       loadCategory(0);
     }
   }, [currentLevelCategories, loadCategory, currentLevel]);
 
-  // Эффект для уровней 2 и 3: сразу запускаем пробы после загрузки категорий
+  // Эффект для уровней 2 и 3
   useEffect(() => {
     if (experimentStartedRef.current && currentLevel !== 1 && currentLevelCategories.length > 0) {
       loadCategory(0);
@@ -419,8 +421,8 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const renderPhaseContent = () => {
     switch (currentPhase) {
-      case 'instructions':
-        let instructionText = '';
+      case 'instructions': {
+        let instructionText;
         if (currentLevel === 1) {
           instructionText = (
             <>
@@ -455,7 +457,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           <div className="gonogo-instructions">
             <h2>{config.name}</h2>
             {instructionText}
-            
             <div className="instruction-keys">
               <div className="key-group">
                 <span className="key key-left">←</span>
@@ -466,12 +467,12 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
                 <span className="key-label instruction-right">Стрелка вправо</span>
               </div>
             </div>
-            
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {LEVELS.length}</div>
             <p className="space-message">[ПРОБЕЛ] начать уровень</p>
             {isSending && <p>Отправка...</p>}
           </div>
         );
+      }
       case 'category':
         return (
           <div className="gonogo-category">
