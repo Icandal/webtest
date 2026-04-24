@@ -373,17 +373,23 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentLevel === 1 && config.sourceType === 'words') {
       const selected = selectRandomCategories(stimuli.words.categories, config.numCategoriesToSelect);
       setCurrentLevelCategories(selected);
+      experimentStartedRef.current = true;
+      // Для уровня 1 категории загружаются через useEffect после установки currentLevelCategories
     } else {
-      setCurrentLevelCategories(LEVEL_CONFIGS[currentLevel].categories || []);
-    }
-    experimentStartedRef.current = true;
-  }, [currentLevel, config]);
-
-  useEffect(() => {
-    if (experimentStartedRef.current && currentLevelCategories.length > 0) {
+      const categories = LEVEL_CONFIGS[currentLevel].categories || [];
+      setCurrentLevelCategories(categories);
+      experimentStartedRef.current = true;
+      // Для уровней 2 и 3 сразу начинаем пробы, минуя лишние эффекты
       loadCategory(0);
     }
-  }, [currentLevelCategories, loadCategory]);
+  }, [currentLevel, config, loadCategory]);
+
+  // useEffect для уровня 1: когда категории выбраны, загружаем первую категорию
+  useEffect(() => {
+    if (experimentStartedRef.current && currentLevel === 1 && currentLevelCategories.length > 0) {
+      loadCategory(0);
+    }
+  }, [currentLevelCategories, loadCategory, currentLevel]);
 
   const handleKeyDown = useCallback((e) => {
     const { code } = e;
@@ -471,7 +477,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             <h2>{config.name}</h2>
             {instructionText}
             
-            {/* Визуальный блок с клавишами (как во FlankerTask) */}
             <div className="instruction-keys">
               <div className="key-group">
                 <span className="key key-left">←</span>
