@@ -3,7 +3,7 @@ import './FlankerTask.css';
 import api from '../utils/api';
 
 const FLANKER_CONFIG = {
-  trialsPerBlock: 100,
+  trialsPerBlock: 5, //100,
   stimulusDuration: 2000,
   // fixationDuration удалён – теперь выбирается случайно для каждой пробы
   stimuli: [

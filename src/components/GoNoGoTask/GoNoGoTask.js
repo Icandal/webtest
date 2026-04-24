@@ -85,7 +85,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const completeLevelRef = useRef(null);
   const completeBlockRef = useRef(null);
 
-  // ВАЖНО: эффекты для рефов должны быть объявлены ДО всех эффектов, которые их используют
+  // Эффекты для рефов (должны быть до остальных эффектов)
   useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
   useEffect(() => { nextTrialRef.current = nextTrial; }, [nextTrial]);
   useEffect(() => { handleNoResponseRef.current = handleNoResponse; }, [handleNoResponse]);
@@ -166,6 +166,10 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }
     const category = categories[index];
     const trials = generateTrialsForCategory(category);
+    
+    // Синхронное обновление ref-ов, чтобы они были доступны сразу
+    trialsRef.current = trials;
+    
     setCurrentCategoryIndex(index);
     setCurrentCategory(category);
     setTrialsForCurrentCategory(trials);
@@ -178,13 +182,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentLevel !== 1) {
       // Для уровней 2 и 3 сразу запускаем пробы без экрана категории
       setCurrentPhase('stimulus');
-      // Убедимся, что runTrialRef.current определён
-      if (runTrialRef.current) {
-        runTrialRef.current(0);
-      } else {
-        console.warn('runTrialRef.current ещё не инициализирован, повторная попытка через setTimeout');
-        setTimeout(() => { if (runTrialRef.current) runTrialRef.current(0); }, 0);
-      }
+      runTrialRef.current(0);
     } else {
       // Для уровня 1 показываем экран категории
       setCurrentPhase('category');
