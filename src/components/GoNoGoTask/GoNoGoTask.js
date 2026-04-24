@@ -85,34 +85,14 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const completeLevelRef = useRef(null);
   const completeBlockRef = useRef(null);
 
-  const formatKey = useCallback((key) => {
-    switch(key) {
-      case 'ArrowRight': return '→';
-      case 'ArrowLeft': return '←';
-      case 'Space': return 'ПРОБЕЛ';
-      default: return key;
-    }
-  }, []);
-
-  const getShortHint = useCallback((categoryName) => {
-    if (currentLevel === 1) {
-      return (
-        <>
-          <span className="instruction-right">→ – относится к категории «{categoryName}»</span>
-          , 
-          <span className="instruction-left"> ← – не относится</span>
-        </>
-      );
-    } else {
-      return (
-        <>
-          <span className="instruction-right">→ – ошибок нет</span>
-          , 
-          <span className="instruction-left"> ← – есть ошибка</span>
-        </>
-      );
-    }
-  }, [currentLevel]);
+  // ВАЖНО: эффекты для рефов должны быть объявлены ДО всех эффектов, которые их используют
+  useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
+  useEffect(() => { nextTrialRef.current = nextTrial; }, [nextTrial]);
+  useEffect(() => { handleNoResponseRef.current = handleNoResponse; }, [handleNoResponse]);
+  useEffect(() => { saveResponseRef.current = saveResponse; }, [saveResponse]);
+  useEffect(() => { completeCategoryRef.current = completeCategory; }, [completeCategory]);
+  useEffect(() => { completeLevelRef.current = completeLevel; }, [completeLevel]);
+  useEffect(() => { completeBlockRef.current = completeBlock; }, [completeBlock]);
 
   useEffect(() => { phaseRef.current = currentPhase; }, [currentPhase]);
   useEffect(() => { trialsRef.current = trialsForCurrentCategory; }, [trialsForCurrentCategory]);
@@ -198,7 +178,13 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentLevel !== 1) {
       // Для уровней 2 и 3 сразу запускаем пробы без экрана категории
       setCurrentPhase('stimulus');
-      runTrialRef.current(0);
+      // Убедимся, что runTrialRef.current определён
+      if (runTrialRef.current) {
+        runTrialRef.current(0);
+      } else {
+        console.warn('runTrialRef.current ещё не инициализирован, повторная попытка через setTimeout');
+        setTimeout(() => { if (runTrialRef.current) runTrialRef.current(0); }, 0);
+      }
     } else {
       // Для уровня 1 показываем экран категории
       setCurrentPhase('category');
@@ -432,14 +418,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   useEffect(() => {
     return () => clearTimer();
   }, [clearTimer]);
-
-  useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
-  useEffect(() => { nextTrialRef.current = nextTrial; }, [nextTrial]);
-  useEffect(() => { handleNoResponseRef.current = handleNoResponse; }, [handleNoResponse]);
-  useEffect(() => { saveResponseRef.current = saveResponse; }, [saveResponse]);
-  useEffect(() => { completeCategoryRef.current = completeCategory; }, [completeCategory]);
-  useEffect(() => { completeLevelRef.current = completeLevel; }, [completeLevel]);
-  useEffect(() => { completeBlockRef.current = completeBlock; }, [completeBlock]);
 
   const renderPhaseContent = () => {
     switch (currentPhase) {
