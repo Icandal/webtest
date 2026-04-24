@@ -85,14 +85,34 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const completeLevelRef = useRef(null);
   const completeBlockRef = useRef(null);
 
-  // Обновление рефов
-  useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
-  useEffect(() => { nextTrialRef.current = nextTrial; }, [nextTrial]);
-  useEffect(() => { handleNoResponseRef.current = handleNoResponse; }, [handleNoResponse]);
-  useEffect(() => { saveResponseRef.current = saveResponse; }, [saveResponse]);
-  useEffect(() => { completeCategoryRef.current = completeCategory; }, [completeCategory]);
-  useEffect(() => { completeLevelRef.current = completeLevel; }, [completeLevel]);
-  useEffect(() => { completeBlockRef.current = completeBlock; }, [completeBlock]);
+  const formatKey = useCallback((key) => {
+    switch(key) {
+      case 'ArrowRight': return '→';
+      case 'ArrowLeft': return '←';
+      case 'Space': return 'ПРОБЕЛ';
+      default: return key;
+    }
+  }, []);
+
+  const getShortHint = useCallback((categoryName) => {
+    if (currentLevel === 1) {
+      return (
+        <>
+          <span className="instruction-right">→ – относится к категории «{categoryName}»</span>
+          , 
+          <span className="instruction-left"> ← – не относится</span>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <span className="instruction-right">→ – ошибок нет</span>
+          , 
+          <span className="instruction-left"> ← – есть ошибка</span>
+        </>
+      );
+    }
+  }, [currentLevel]);
 
   useEffect(() => { phaseRef.current = currentPhase; }, [currentPhase]);
   useEffect(() => { trialsRef.current = trialsForCurrentCategory; }, [trialsForCurrentCategory]);
@@ -172,32 +192,18 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     setCurrentTrialIndex(0);
     setCurrentWord('');
     responseReceivedRef.current = false;
-    stimulusStartTimeRef.current = null; // сброс для корректного запуска первого триала
     clearTimer();
     categoryStartTimeRef.current = Date.now();
 
     if (currentLevel !== 1) {
-      // Для уровней 2 и 3 переходим в фазу стимула, но сам триал запустится в useEffect
+      // Для уровней 2 и 3 сразу запускаем пробы без экрана категории
       setCurrentPhase('stimulus');
+      runTrialRef.current(0);
     } else {
       // Для уровня 1 показываем экран категории
       setCurrentPhase('category');
     }
   }, [currentLevelCategories, generateTrialsForCategory, clearTimer, currentLevel]);
-
-  // АВТОМАТИЧЕСКИЙ ЗАПУСК ПЕРВОГО ТРИАЛА ДЛЯ УРОВНЕЙ 2 И 3
-  useEffect(() => {
-    if (
-      currentPhase === 'stimulus' &&
-      trialsForCurrentCategory.length > 0 &&
-      stimulusStartTimeRef.current === null &&
-      !responseReceivedRef.current
-    ) {
-      if (runTrialRef.current) {
-        runTrialRef.current(currentTrialIndex);
-      }
-    }
-  }, [currentPhase, trialsForCurrentCategory, currentTrialIndex]);
 
   const runTrial = useCallback((trialIndex) => {
     const trial = trialsRef.current[trialIndex];
@@ -367,26 +373,20 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentLevel === 1 && config.sourceType === 'words') {
       const selected = selectRandomCategories(stimuli.words.categories, config.numCategoriesToSelect);
       setCurrentLevelCategories(selected);
+      experimentStartedRef.current = true;
     } else {
       const categories = LEVEL_CONFIGS[currentLevel].categories || [];
       setCurrentLevelCategories(categories);
+      experimentStartedRef.current = true;
     }
-    experimentStartedRef.current = true;
   }, [currentLevel, config]);
 
-  // Эффект для уровня 1: показываем экран категории после загрузки категорий
+  // Единый эффект для загрузки первой категории как только категории выбраны и эксперимент запущен
   useEffect(() => {
-    if (experimentStartedRef.current && currentLevel === 1 && currentLevelCategories.length > 0) {
+    if (experimentStartedRef.current && currentLevelCategories.length > 0) {
       loadCategory(0);
     }
-  }, [currentLevelCategories, loadCategory, currentLevel]);
-
-  // Эффект для уровней 2 и 3: сразу запускаем пробы после загрузки категорий
-  useEffect(() => {
-    if (experimentStartedRef.current && currentLevel !== 1 && currentLevelCategories.length > 0) {
-      loadCategory(0);
-    }
-  }, [currentLevelCategories, loadCategory, currentLevel]);
+  }, [currentLevelCategories, loadCategory]);
 
   const handleKeyDown = useCallback((e) => {
     const { code } = e;
@@ -426,6 +426,14 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   useEffect(() => {
     return () => clearTimer();
   }, [clearTimer]);
+
+  useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
+  useEffect(() => { nextTrialRef.current = nextTrial; }, [nextTrial]);
+  useEffect(() => { handleNoResponseRef.current = handleNoResponse; }, [handleNoResponse]);
+  useEffect(() => { saveResponseRef.current = saveResponse; }, [saveResponse]);
+  useEffect(() => { completeCategoryRef.current = completeCategory; }, [completeCategory]);
+  useEffect(() => { completeLevelRef.current = completeLevel; }, [completeLevel]);
+  useEffect(() => { completeBlockRef.current = completeBlock; }, [completeBlock]);
 
   const renderPhaseContent = () => {
     switch (currentPhase) {
