@@ -373,20 +373,23 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentLevel === 1 && config.sourceType === 'words') {
       const selected = selectRandomCategories(stimuli.words.categories, config.numCategoriesToSelect);
       setCurrentLevelCategories(selected);
-      experimentStartedRef.current = true;
-      // Для уровня 1 категории загружаются через useEffect после установки currentLevelCategories
     } else {
       const categories = LEVEL_CONFIGS[currentLevel].categories || [];
       setCurrentLevelCategories(categories);
-      experimentStartedRef.current = true;
-      // Для уровней 2 и 3 сразу начинаем пробы, минуя лишние эффекты
-      loadCategory(0);
     }
-  }, [currentLevel, config, loadCategory]);
+    experimentStartedRef.current = true;
+  }, [currentLevel, config]);
 
-  // useEffect для уровня 1: когда категории выбраны, загружаем первую категорию
+  // Эффект для уровня 1: показываем экран категории после загрузки категорий
   useEffect(() => {
     if (experimentStartedRef.current && currentLevel === 1 && currentLevelCategories.length > 0) {
+      loadCategory(0);
+    }
+  }, [currentLevelCategories, loadCategory, currentLevel]);
+
+  // Эффект для уровней 2 и 3: сразу запускаем пробы после загрузки категорий
+  useEffect(() => {
+    if (experimentStartedRef.current && currentLevel !== 1 && currentLevelCategories.length > 0) {
       loadCategory(0);
     }
   }, [currentLevelCategories, loadCategory, currentLevel]);
