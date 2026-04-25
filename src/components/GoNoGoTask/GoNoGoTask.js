@@ -9,6 +9,7 @@ const LEVEL_CONFIGS = {
     sourceType: 'words',
     numCategoriesToSelect: 3,
     trialsPerCategory: 30,
+    categoryDuration: 1000,
     stimulusDuration: 2000,
     itiDuration: 250,
     targetProbability: 0.5,
@@ -18,10 +19,16 @@ const LEVEL_CONFIGS = {
     name: 'Тест 4 - Предложения с ошибками',
     sourceType: 'phrases',
     trialsPerCategory: 30,
+    categoryDuration: 1000,
     stimulusDuration: 5000,
     itiDuration: 250,
-    categories: [{ name: 'С ошибкой', words: stimuli?.phrases?.incorrect || [] }],
-    nonCategoryWords: stimuli?.phrases?.correct || [],
+    categories: [
+      {
+        name: 'С ошибкой',
+        words: stimuli.phrases.incorrect
+      }
+    ],
+    nonCategoryWords: stimuli.phrases.correct,
     targetProbability: 0.5,
     keys: { yes: ['ArrowRight'], no: ['ArrowLeft'] }
   },
@@ -29,10 +36,16 @@ const LEVEL_CONFIGS = {
     name: 'Тест 5 - Сложные предложения',
     sourceType: 'sentences',
     trialsPerCategory: 30,
+    categoryDuration: 1000,
     stimulusDuration: 5000,
     itiDuration: 250,
-    categories: [{ name: 'С ошибкой', words: stimuli?.sentences?.incorrect || [] }],
-    nonCategoryWords: stimuli?.sentences?.correct || [],
+    categories: [
+      {
+        name: 'С ошибкой',
+        words: stimuli.sentences.incorrect
+      }
+    ],
+    nonCategoryWords: stimuli.sentences.correct,
     targetProbability: 0.5,
     keys: { yes: ['ArrowRight'], no: ['ArrowLeft'] }
   }
@@ -41,30 +54,70 @@ const LEVEL_CONFIGS = {
 const LEVELS = [1, 2, 3];
 
 const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
-  // Состояние для рендера
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+  const currentLevel = LEVELS[currentLevelIndex];
+  const config = LEVEL_CONFIGS[currentLevel];
+
+  const [currentLevelCategories, setCurrentLevelCategories] = useState([]);
   const [currentPhase, setCurrentPhase] = useState('instructions');
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [currentCategory, setCurrentCategory] = useState(null);
+  const [trialsForCurrentCategory, setTrialsForCurrentCategory] = useState([]);
+  const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [currentLevelCategories, setCurrentLevelCategories] = useState([]);
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
 
-  // Refs для хранения данных, которые меняются во времени
-  const currentLevelRef = useRef(currentLevelIndex);
+  const timeoutRef = useRef(null);
   const phaseRef = useRef(currentPhase);
-  const configRef = useRef(LEVEL_CONFIGS[LEVELS[currentLevelIndex]]);
-  const blockDataRef = useRef([]);
-  const trialsRef = useRef([]);         // массив проб текущей категории
-  const trialIndexRef = useRef(0);      // индекс текущей пробы в категории
+  const trialsRef = useRef(trialsForCurrentCategory);
   const categoryStartTimeRef = useRef(null);
   const stimulusStartTimeRef = useRef(null);
   const responseReceivedRef = useRef(false);
   const experimentStartedRef = useRef(false);
-  const timeoutRef = useRef(null);
-  const isRunningRef = useRef(false);   // флаг, чтобы не запускать несколько таймеров одновременно
+  const blockDataRef = useRef([]);
+  const currentLevelRef = useRef(currentLevelIndex);
 
-  // Вспомогательная очистка таймера
+  const runTrialRef = useRef(null);
+  const nextTrialRef = useRef(null);
+  const handleNoResponseRef = useRef(null);
+  const saveResponseRef = useRef(null);
+  const completeCategoryRef = useRef(null);
+  const completeLevelRef = useRef(null);
+  const completeBlockRef = useRef(null);
+
+  const formatKey = useCallback((key) => {
+    switch(key) {
+      case 'ArrowRight': return '→';
+      case 'ArrowLeft': return '←';
+      case 'Space': return 'ПРОБЕЛ';
+      default: return key;
+    }
+  }, []);
+
+  const getShortHint = useCallback((categoryName) => {
+    if (currentLevel === 1) {
+      return (
+        <>
+          <span className="instruction-right">→ – относится к категории «{categoryName}»</span>
+          , 
+          <span className="instruction-left"> ← – не относится</span>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <span className="instruction-right">→ – ошибок нет</span>
+          , 
+          <span className="instruction-left"> ← – есть ошибка</span>
+        </>
+      );
+    }
+  }, [currentLevel]);
+
+  useEffect(() => { phaseRef.current = currentPhase; }, [currentPhase]);
+  useEffect(() => { trialsRef.current = trialsForCurrentCategory; }, [trialsForCurrentCategory]);
+  useEffect(() => { currentLevelRef.current = currentLevelIndex; }, [currentLevelIndex]);
+
   const clearTimer = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -72,9 +125,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, []);
 
-  // Генерация категорий для уровня 1
   const selectRandomCategories = (pool, count) => {
-    if (!pool) return [];
     const keys = Object.keys(pool).filter(key => key !== 'Прочее');
     if (count >= keys.length) {
       return keys.map(key => ({ name: key, words: pool[key] }));
@@ -83,10 +134,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     return shuffled.slice(0, count).map(key => ({ name: key, words: pool[key] }));
   };
 
-  // Генерация проб для одной категории
-  const generateTrialsForCategory = (category) => {
-    const config = configRef.current;
-    const currentLevel = currentLevelRef.current;
+  const generateTrialsForCategory = useCallback((category) => {
     const trials = [];
     for (let i = 0; i < config.trialsPerCategory; i++) {
       const isTarget = Math.random() < config.targetProbability;
@@ -95,10 +143,10 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
         word = category.words[Math.floor(Math.random() * category.words.length)];
       } else {
         if (config.sourceType === 'words') {
-          const allCategoryWords = Object.values(stimuli?.words?.categories || {})
+          const allCategoryWords = Object.values(stimuli.words.categories)
             .flat()
             .filter(w => !category.words.includes(w));
-          const nonWords = stimuli?.words?.categories?.['Прочее'] || [];
+          const nonWords = stimuli.words.categories['Прочее'] || [];
           if (nonWords.length > 0 && Math.random() < 0.5) {
             word = nonWords[Math.floor(Math.random() * nonWords.length)];
           } else {
@@ -128,163 +176,142 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       });
     }
     return trials;
-  };
+  }, [config.trialsPerCategory, config.targetProbability, config.sourceType, config.nonCategoryWords, currentLevel]);
 
-  // Сохранение ответа или пропуска
-  const recordTrialData = (trial, responseType, reactionTime) => {
-    const isCorrect = responseType ? (responseType === trial.correctResponse) : !trial.isTarget;
-    const trialData = {
-      experiment_block: parseInt(blockId),
-      global_trial_number: blockDataRef.current.length + 1,
-      level: currentLevelRef.current,
-      category_index: currentCategoryIndex + 1,
-      category_name: trial.category,
-      trial_in_category: trial.trialNumberInCategory,
-      stimulus: trial.word,
-      response: responseType || null,
-      correct_response: trial.correctResponse,
-      is_correct: isCorrect,
-      is_target: trial.isTarget,
-      reaction_time: reactionTime || null,
-      client_category_time: categoryStartTimeRef.current,
-      client_stimulus_time: responseType ? stimulusStartTimeRef.current : null,
-      client_response_time: responseType ? Date.now() : null,
-    };
-    blockDataRef.current.push(trialData);
-  };
-
-  // Запуск следующей пробы (вызывается из таймера или после ответа)
-  const advanceToNextTrial = useCallback(() => {
-    clearTimer();
-    if (!isRunningRef.current) return;
-    
-    const nextIndex = trialIndexRef.current + 1;
-    if (nextIndex < trialsRef.current.length) {
-      // Есть следующая проба в текущей категории
-      trialIndexRef.current = nextIndex;
-      startTrial(nextIndex);
-    } else {
-      // Категория закончилась, переходим к следующей категории
-      finishCurrentCategory();
+  const loadCategory = useCallback((index) => {
+    const categories = currentLevelCategories;
+    if (index >= categories.length) {
+      completeLevelRef.current();
+      return;
     }
-  }, []);
+    const category = categories[index];
+    const trials = generateTrialsForCategory(category);
+    setCurrentCategoryIndex(index);
+    setCurrentCategory(category);
+    setTrialsForCurrentCategory(trials);
+    setCurrentTrialIndex(0);
+    setCurrentWord('');
+    responseReceivedRef.current = false;
+    clearTimer();
+    categoryStartTimeRef.current = Date.now();
 
-  // Запуск конкретной пробы по индексу
-  const startTrial = useCallback((index) => {
-    const trial = trialsRef.current[index];
+    if (currentLevel !== 1) {
+      // Для уровней 2 и 3 сразу запускаем пробы без экрана категории
+      setCurrentPhase('stimulus');
+      runTrialRef.current(0);
+    } else {
+      // Для уровня 1 показываем экран категории
+      setCurrentPhase('category');
+    }
+  }, [currentLevelCategories, generateTrialsForCategory, clearTimer, currentLevel]);
+
+  const runTrial = useCallback((trialIndex) => {
+    const trial = trialsRef.current[trialIndex];
     if (!trial) return;
     clearTimer();
     responseReceivedRef.current = false;
     setCurrentPhase('stimulus');
     setCurrentWord(trial.word);
     stimulusStartTimeRef.current = Date.now();
-    
-    // Устанавливаем таймер на случай отсутствия ответа
     timeoutRef.current = setTimeout(() => {
       if (!responseReceivedRef.current && phaseRef.current === 'stimulus') {
-        // Нет ответа
-        recordTrialData(trial, null, null);
-        responseReceivedRef.current = true;
-        setCurrentPhase('iti');
-        // Пауза между стимулами
-        timeoutRef.current = setTimeout(() => {
-          if (isRunningRef.current) advanceToNextTrial();
-        }, configRef.current.itiDuration);
+        handleNoResponseRef.current(trial);
       }
-    }, configRef.current.stimulusDuration);
-  }, []);
+    }, config.stimulusDuration);
+  }, [config.stimulusDuration, clearTimer]);
 
-  // Обработка ответа участника
-  const handleResponse = useCallback((responseType) => {
-    if (phaseRef.current !== 'stimulus') return;
-    if (responseReceivedRef.current) return;
-    
-    const trial = trialsRef.current[trialIndexRef.current];
-    if (!trial) return;
-    
-    const reactionTime = Date.now() - stimulusStartTimeRef.current;
-    recordTrialData(trial, responseType, reactionTime);
+  const saveResponse = useCallback((trial, reactionTime, responseType) => {
+    const isCorrect = (responseType === trial.correctResponse);
+    const trialData = {
+      experiment_block: parseInt(blockId),
+      global_trial_number: blockDataRef.current.length + 1,
+      level: currentLevel,
+      category_index: currentCategoryIndex + 1,
+      category_name: trial.category,
+      trial_in_category: trial.trialNumberInCategory,
+      stimulus: trial.word,
+      response: responseType,
+      correct_response: trial.correctResponse,
+      is_correct: isCorrect,
+      is_target: trial.isTarget,
+      reaction_time: reactionTime,
+      client_category_time: categoryStartTimeRef.current,
+      client_stimulus_time: stimulusStartTimeRef.current,
+      client_response_time: Date.now(),
+    };
+    blockDataRef.current.push(trialData);
     responseReceivedRef.current = true;
     clearTimer();
     setCurrentPhase('iti');
-    
-    // Запускаем следующую пробу после паузы
-    timeoutRef.current = setTimeout(() => {
-      if (isRunningRef.current) advanceToNextTrial();
-    }, configRef.current.itiDuration);
-  }, []);
+    timeoutRef.current = setTimeout(nextTrialRef.current, config.itiDuration);
+  }, [blockId, currentLevel, currentCategoryIndex, config.itiDuration, clearTimer]);
 
-  // Завершение текущей категории (загрузка следующей или переход на следующий уровень)
-  const finishCurrentCategory = useCallback(() => {
+  const handleNoResponse = useCallback((trial) => {
+    const isCorrect = !trial.isTarget;
+    const trialData = {
+      experiment_block: parseInt(blockId),
+      global_trial_number: blockDataRef.current.length + 1,
+      level: currentLevel,
+      category_index: currentCategoryIndex + 1,
+      category_name: trial.category,
+      trial_in_category: trial.trialNumberInCategory,
+      stimulus: trial.word,
+      response: null,
+      correct_response: trial.correctResponse,
+      is_correct: isCorrect,
+      is_target: trial.isTarget,
+      reaction_time: null,
+      client_category_time: categoryStartTimeRef.current,
+      client_stimulus_time: stimulusStartTimeRef.current,
+      client_response_time: null,
+    };
+    blockDataRef.current.push(trialData);
+    responseReceivedRef.current = true;
     clearTimer();
     setCurrentPhase('iti');
-    // Загружаем следующую категорию после небольшой паузы
-    timeoutRef.current = setTimeout(() => {
-      if (!isRunningRef.current) return;
-      const nextCatIndex = currentCategoryIndex + 1;
-      if (nextCatIndex < currentLevelCategories.length) {
-        loadCategory(nextCatIndex);
-      } else {
-        // Все категории текущего уровня завершены -> переход на следующий уровень
-        finishCurrentLevel();
-      }
-    }, configRef.current.itiDuration);
-  }, [currentCategoryIndex, currentLevelCategories]);
+    timeoutRef.current = setTimeout(nextTrialRef.current, config.itiDuration);
+  }, [blockId, currentLevel, currentCategoryIndex, config.itiDuration, clearTimer]);
 
-  // Загрузка категории по индексу (установка проб и запуск первой пробы)
-  const loadCategory = useCallback((catIndex) => {
-    if (catIndex >= currentLevelCategories.length) return;
-    const category = currentLevelCategories[catIndex];
-    const trials = generateTrialsForCategory(category);
-    trialsRef.current = trials;
-    trialIndexRef.current = 0;
-    setCurrentCategoryIndex(catIndex);
-    setCurrentCategory(category);
-    setCurrentWord('');
-    responseReceivedRef.current = false;
+  const nextTrial = useCallback(() => {
     clearTimer();
-    categoryStartTimeRef.current = Date.now();
-    
-    if (currentLevelRef.current !== 1) {
-      // Для уровней 2 и 3 сразу начинаем пробы
-      setCurrentPhase('stimulus');
-      startTrial(0);
+    const nextIndex = currentTrialIndex + 1;
+    if (nextIndex < config.trialsPerCategory) {
+      setCurrentTrialIndex(nextIndex);
+      runTrialRef.current(nextIndex);
     } else {
-      // Для уровня 1 показываем экран категории
-      setCurrentPhase('category');
+      completeCategoryRef.current();
     }
-  }, [currentLevelCategories]);
+  }, [currentTrialIndex, config.trialsPerCategory, clearTimer]);
 
-  // Завершение текущего уровня (переход к следующему или завершение блока)
-  const finishCurrentLevel = useCallback(() => {
+  const completeCategory = useCallback(() => {
     clearTimer();
-    const nextLevelIdx = currentLevelRef.current + 1;
-    if (nextLevelIdx < LEVELS.length) {
-      // Переход на следующий уровень
-      setCurrentLevelIndex(nextLevelIdx);
+    setCurrentPhase('iti');
+    timeoutRef.current = setTimeout(() => loadCategory(currentCategoryIndex + 1), config.itiDuration);
+  }, [currentCategoryIndex, config.itiDuration, loadCategory, clearTimer]);
+
+  const completeLevel = useCallback(() => {
+    clearTimer();
+    const nextLevelIndex = currentLevelIndex + 1;
+    if (nextLevelIndex < LEVELS.length) {
+      setCurrentLevelIndex(nextLevelIndex);
       setCurrentPhase('instructions');
       experimentStartedRef.current = false;
       setCurrentCategoryIndex(0);
       setCurrentCategory(null);
+      setTrialsForCurrentCategory([]);
+      setCurrentTrialIndex(0);
       setCurrentWord('');
-      setCurrentLevelCategories([]);
-      trialsRef.current = [];
-      trialIndexRef.current = 0;
       responseReceivedRef.current = false;
-      isRunningRef.current = false;
+      setCurrentLevelCategories([]);
     } else {
-      // Все уровни завершены -> завершаем блок
-      completeBlock();
+      completeBlockRef.current();
     }
-  }, []);
+  }, [currentLevelIndex, clearTimer]);
 
-  // Завершение блока (отправка данных)
   const completeBlock = useCallback(async () => {
-    isRunningRef.current = false;
-    clearTimer();
     setIsSending(true);
     let sendSuccess = false;
-    if (blockId && blockDataRef.current.length) {
+    if (blockId) {
       try {
         const trialsData = blockDataRef.current.map(t => ({
           trial_number: t.global_trial_number,
@@ -301,7 +328,10 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           client_stimulus_time: t.client_stimulus_time,
           client_response_time: t.client_response_time,
         }));
-        const response = await api.post('/gonogo/trials/batch/', { block_id: blockId, trials: trialsData });
+        const response = await api.post('/gonogo/trials/batch/', {
+          block_id: blockId,
+          trials: trialsData
+        });
         if (response.status === 201) sendSuccess = true;
       } catch (error) {
         console.error('Ошибка отправки данных Go/NoGo:', error);
@@ -309,7 +339,11 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }
     setIsSending(false);
     if (blockId) {
-      try { await api.post('/block/complete/', { block_id: blockId }); } catch (e) { console.warn(e); }
+      try {
+        await api.post('/block/complete/', { block_id: blockId });
+      } catch (e) {
+        console.warn('Не удалось завершить блок (возможно, эндпоинт не реализован):', e);
+      }
     }
     if (onBlockComplete) {
       const totalTrials = blockDataRef.current.length;
@@ -323,112 +357,137 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
         blockId,
         participantId,
         levelsCompleted: LEVELS,
-        trialsPerCategory: configRef.current.trialsPerCategory,
+        categoriesPerLevel: LEVELS.map(lvl => {
+          if (lvl === 1) {
+            return currentLevelCategories.map(c => c.name);
+          } else {
+            return LEVEL_CONFIGS[lvl].categories.map(c => c.name);
+          }
+        }),
+        trialsPerCategory: config.trialsPerCategory,
       });
     }
-  }, [blockId, onBlockComplete, participantId]);
+  }, [blockId, onBlockComplete, participantId, config.trialsPerCategory, currentLevelCategories]);
 
-  // Запуск текущего уровня (выбор категорий)
   const startCurrentLevel = useCallback(() => {
-    const level = currentLevelRef.current;
-    const config = configRef.current;
-    if (level === 1 && config.sourceType === 'words') {
-      const selected = selectRandomCategories(stimuli?.words?.categories, config.numCategoriesToSelect);
+    if (currentLevel === 1 && config.sourceType === 'words') {
+      const selected = selectRandomCategories(stimuli.words.categories, config.numCategoriesToSelect);
       setCurrentLevelCategories(selected);
       experimentStartedRef.current = true;
-      isRunningRef.current = true;
+      // Для уровня 1 категории загружаются через useEffect после установки currentLevelCategories
     } else {
-      const categories = LEVEL_CONFIGS[level]?.categories || [];
+      const categories = LEVEL_CONFIGS[currentLevel].categories || [];
       setCurrentLevelCategories(categories);
       experimentStartedRef.current = true;
-      isRunningRef.current = true;
-    }
-  }, []);
-
-  // Эффект: когда установлены категории, загружаем первую
-  useEffect(() => {
-    if (experimentStartedRef.current && currentLevelCategories.length > 0 && currentPhase === 'instructions') {
+      // Для уровней 2 и 3 сразу начинаем пробы, минуя лишние эффекты
       loadCategory(0);
     }
-  }, [currentLevelCategories, loadCategory, currentPhase]);
+  }, [currentLevel, config, loadCategory]);
 
-  // Эффект для обновления рефов при изменении уровня/фазы
+  // useEffect для уровня 1: когда категории выбраны, загружаем первую категорию
   useEffect(() => {
-    currentLevelRef.current = currentLevelIndex;
-    configRef.current = LEVEL_CONFIGS[LEVELS[currentLevelIndex]];
-  }, [currentLevelIndex]);
+    if (experimentStartedRef.current && currentLevel === 1 && currentLevelCategories.length > 0) {
+      loadCategory(0);
+    }
+  }, [currentLevelCategories, loadCategory, currentLevel]);
 
-  useEffect(() => {
-    phaseRef.current = currentPhase;
-  }, [currentPhase]);
-
-  // Очистка при размонтировании
-  useEffect(() => {
-    return () => {
-      clearTimer();
-      isRunningRef.current = false;
-    };
-  }, [clearTimer]);
-
-  // Обработчик клавиш
   const handleKeyDown = useCallback((e) => {
     const { code } = e;
-    const phase = phaseRef.current;
-    if (phase === 'instructions' && code === 'Space') {
+    if (currentPhase === 'instructions' && code === 'Space') {
       e.preventDefault();
       if (!experimentStartedRef.current) startCurrentLevel();
       return;
     }
-    if (phase === 'category' && code === 'Space') {
+    if (currentPhase === 'category' && code === 'Space') {
       e.preventDefault();
-      // Запускаем первую пробу
-      clearTimer();
-      setCurrentPhase('stimulus');
-      startTrial(0);
+      runTrialRef.current(0);
       return;
     }
-    if (phase === 'stimulus' && !responseReceivedRef.current) {
-      const config = configRef.current;
+    if (currentPhase === 'stimulus' && !responseReceivedRef.current) {
       const yesKeys = config.keys.yes || [];
       const noKeys = config.keys.no || [];
       let responseType = null;
-      if (yesKeys.includes(code)) responseType = 'yes';
-      else if (noKeys.includes(code)) responseType = 'no';
+      if (yesKeys.includes(code)) {
+        responseType = 'yes';
+      } else if (noKeys.includes(code)) {
+        responseType = 'no';
+      }
       if (responseType) {
         e.preventDefault();
-        handleResponse(responseType);
+        const reactionTime = Date.now() - stimulusStartTimeRef.current;
+        const trial = trialsRef.current[currentTrialIndex];
+        if (trial) saveResponseRef.current(trial, reactionTime, responseType);
       }
     }
-  }, [startCurrentLevel, handleResponse, startTrial, clearTimer]);
+  }, [currentPhase, currentTrialIndex, startCurrentLevel, config]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Рендер
+  useEffect(() => {
+    return () => clearTimer();
+  }, [clearTimer]);
+
+  useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
+  useEffect(() => { nextTrialRef.current = nextTrial; }, [nextTrial]);
+  useEffect(() => { handleNoResponseRef.current = handleNoResponse; }, [handleNoResponse]);
+  useEffect(() => { saveResponseRef.current = saveResponse; }, [saveResponse]);
+  useEffect(() => { completeCategoryRef.current = completeCategory; }, [completeCategory]);
+  useEffect(() => { completeLevelRef.current = completeLevel; }, [completeLevel]);
+  useEffect(() => { completeBlockRef.current = completeBlock; }, [completeBlock]);
+
   const renderPhaseContent = () => {
     switch (currentPhase) {
       case 'instructions':
+        let instructionText = '';
+        if (currentLevel === 1) {
+          instructionText = (
+            <>
+              <p>В этом тесте вам будет показана категория – животные, растения, и т.д.
+                Затем вам будут по одному показаны слова.
+                Вам нужно определить, относится ли каждое слово к объявленной категории.</p>
+              <p>Если да – <span className="instruction-right">нажмите <strong>→</strong></span>, если нет – <span className="instruction-left">нажмите <strong>←</strong></span>.</p>
+              <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+              <p><strong>Время теста составит примерно 5 минут.</strong></p>
+            </>
+          );
+        } else if (currentLevel === 2) {
+          instructionText = (
+            <>
+              <p>В данном задании на экране будут показаны словосочетания и простые короткие предложения. Ваша задача — определить, содержит ли словосочетание или предложение ошибку (любую: орфографическую, грамматическую, пунктуационную и т.д.) или ошибок нет.</p>
+              <p><span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>, <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.</p>
+              <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+              <p><strong>Время теста составит примерно 2 минуты.</strong></p>
+            </>
+          );
+        } else {
+          instructionText = (
+            <>
+              <p>В данном задании на экране будут показаны предложения. Ваша задача — определить, содержит ли эти предложения ошибку (любую: орфографическую, грамматическую, пунктуационную и т.д.) или ошибок нет.</p>
+              <p><span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>, <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.</p>
+              <p>Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.</p>
+              <p><strong>Время теста составит примерно 2 минуты.</strong></p>
+            </>
+          );
+        }
         return (
           <div className="gonogo-instructions">
-            <h2>{configRef.current.name}</h2>
-            {currentLevelRef.current === 1 && (
-              <>
-                <p>В этом тесте вам будет показана категория, затем слова. Определите, относится ли слово к категории.</p>
-                <p><span className="instruction-right">→</span> – относится, <span className="instruction-left">←</span> – не относится.</p>
-              </>
-            )}
-            {currentLevelRef.current === 2 && (
-              <p><span className="instruction-right">→</span> – ошибок нет, <span className="instruction-left">←</span> – есть ошибка.</p>
-            )}
-            {currentLevelRef.current === 3 && (
-              <p><span className="instruction-right">→</span> – ошибок нет, <span className="instruction-left">←</span> – есть ошибка.</p>
-            )}
+            <h2>{config.name}</h2>
+            {instructionText}
+            
             <div className="instruction-keys">
-              <div className="key-group"><span className="key key-left">←</span><span className="key-label">Стрелка влево</span></div>
-              <div className="key-group"><span className="key key-right">→</span><span className="key-label">Стрелка вправо</span></div>
+              <div className="key-group">
+                <span className="key key-left">←</span>
+                <span className="key-label instruction-left">Стрелка влево</span>
+              </div>
+              <div className="key-group">
+                <span className="key key-right">→</span>
+                <span className="key-label instruction-right">Стрелка вправо</span>
+              </div>
             </div>
+            
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {LEVELS.length}</div>
             <p className="space-message">[ПРОБЕЛ] начать уровень</p>
             {isSending && <p>Отправка...</p>}
@@ -440,6 +499,9 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             <div className="category-container">
               <div className="category-label">Категория</div>
               <div className="category-name">{currentCategory?.name}</div>
+              {currentCategory?.name === 'Фрукты' && (
+                <div className="category-reminder">Помните, ягоды — не фрукты</div>
+              )}
               <p className="space-message">[ПРОБЕЛ] начать тест</p>
             </div>
           </div>
@@ -459,7 +521,9 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   return (
     <div className="gonogo-task">
-      <div className="gonogo-content">{renderPhaseContent()}</div>
+      <div className="gonogo-content">
+        {renderPhaseContent()}
+      </div>
     </div>
   );
 };
