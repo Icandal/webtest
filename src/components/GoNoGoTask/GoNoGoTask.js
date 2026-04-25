@@ -66,8 +66,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState('');
   const [isSending, setIsSending] = useState(false);
-  // Флаг, указывающий, что нужно запустить первую пробу при загрузке trialsForCurrentCategory
-  const [pendingFirstTrial, setPendingFirstTrial] = useState(false);
 
   const timeoutRef = useRef(null);
   const phaseRef = useRef(currentPhase);
@@ -198,22 +196,22 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     categoryStartTimeRef.current = Date.now();
 
     if (currentLevel !== 1) {
-      // Для уровней 2 и 3 показываем стимул и запрашиваем запуск первой пробы после обновления состояния
+      // Для уровней 2 и 3 сразу переходим к стимулу, но запускаем пробу с задержкой 0,
+      // чтобы React успел обновить trialsRef.current
       setCurrentPhase('stimulus');
-      setPendingFirstTrial(true);
+      setTimeout(() => {
+        if (trialsRef.current && trialsRef.current.length > 0) {
+          runTrialRef.current(0);
+        } else {
+          console.error('Trials not ready, restarting category');
+          completeCategoryRef.current();
+        }
+      }, 0);
     } else {
       // Для уровня 1 показываем экран категории
       setCurrentPhase('category');
     }
   }, [currentLevelCategories, generateTrialsForCategory, clearTimer, currentLevel]);
-
-  // Запуск первой пробы, когда trialsForCurrentCategory загружены и требуется запуск
-  useEffect(() => {
-    if (pendingFirstTrial && trialsForCurrentCategory.length > 0) {
-      runTrialRef.current(0);
-      setPendingFirstTrial(false);
-    }
-  }, [pendingFirstTrial, trialsForCurrentCategory]);
 
   const runTrial = useCallback((trialIndex) => {
     const trial = trialsRef.current[trialIndex];
@@ -301,7 +299,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const completeLevel = useCallback(() => {
     clearTimer();
-    setPendingFirstTrial(false); // сброс флага при смене уровня
     const nextLevelIndex = currentLevelIndex + 1;
     if (nextLevelIndex < LEVELS.length) {
       setCurrentLevelIndex(nextLevelIndex);
@@ -482,7 +479,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             <h2>{config.name}</h2>
             {instructionText}
             
-            {/* Визуальный блок с клавишами (как во FlankerTask) */}
             <div className="instruction-keys">
               <div className="key-group">
                 <span className="key key-left">←</span>
