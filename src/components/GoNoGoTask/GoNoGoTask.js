@@ -66,6 +66,8 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState('');
   const [isSending, setIsSending] = useState(false);
+  // Флаг, указывающий, что нужно запустить первую пробу при загрузке trialsForCurrentCategory
+  const [pendingFirstTrial, setPendingFirstTrial] = useState(false);
 
   const timeoutRef = useRef(null);
   const phaseRef = useRef(currentPhase);
@@ -196,14 +198,22 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     categoryStartTimeRef.current = Date.now();
 
     if (currentLevel !== 1) {
-      // Для уровней 2 и 3 сразу запускаем пробы без экрана категории
+      // Для уровней 2 и 3 показываем стимул и запрашиваем запуск первой пробы после обновления состояния
       setCurrentPhase('stimulus');
-      runTrialRef.current(0);
+      setPendingFirstTrial(true);
     } else {
       // Для уровня 1 показываем экран категории
       setCurrentPhase('category');
     }
   }, [currentLevelCategories, generateTrialsForCategory, clearTimer, currentLevel]);
+
+  // Запуск первой пробы, когда trialsForCurrentCategory загружены и требуется запуск
+  useEffect(() => {
+    if (pendingFirstTrial && trialsForCurrentCategory.length > 0) {
+      runTrialRef.current(0);
+      setPendingFirstTrial(false);
+    }
+  }, [pendingFirstTrial, trialsForCurrentCategory]);
 
   const runTrial = useCallback((trialIndex) => {
     const trial = trialsRef.current[trialIndex];
@@ -291,6 +301,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const completeLevel = useCallback(() => {
     clearTimer();
+    setPendingFirstTrial(false); // сброс флага при смене уровня
     const nextLevelIndex = currentLevelIndex + 1;
     if (nextLevelIndex < LEVELS.length) {
       setCurrentLevelIndex(nextLevelIndex);
@@ -373,23 +384,17 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     if (currentLevel === 1 && config.sourceType === 'words') {
       const selected = selectRandomCategories(stimuli.words.categories, config.numCategoriesToSelect);
       setCurrentLevelCategories(selected);
-      experimentStartedRef.current = true;
-      // Для уровня 1 категории загружаются через useEffect после установки currentLevelCategories
     } else {
-      const categories = LEVEL_CONFIGS[currentLevel].categories || [];
-      setCurrentLevelCategories(categories);
-      experimentStartedRef.current = true;
-      // Для уровней 2 и 3 сразу начинаем пробы, минуя лишние эффекты
-      loadCategory(0);
+      setCurrentLevelCategories(LEVEL_CONFIGS[currentLevel].categories || []);
     }
-  }, [currentLevel, config, loadCategory]);
+    experimentStartedRef.current = true;
+  }, [currentLevel, config]);
 
-  // useEffect для уровня 1: когда категории выбраны, загружаем первую категорию
   useEffect(() => {
-    if (experimentStartedRef.current && currentLevel === 1 && currentLevelCategories.length > 0) {
+    if (experimentStartedRef.current && currentLevelCategories.length > 0) {
       loadCategory(0);
     }
-  }, [currentLevelCategories, loadCategory, currentLevel]);
+  }, [currentLevelCategories, loadCategory]);
 
   const handleKeyDown = useCallback((e) => {
     const { code } = e;
@@ -477,6 +482,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
             <h2>{config.name}</h2>
             {instructionText}
             
+            {/* Визуальный блок с клавишами (как во FlankerTask) */}
             <div className="instruction-keys">
               <div className="key-group">
                 <span className="key key-left">←</span>
