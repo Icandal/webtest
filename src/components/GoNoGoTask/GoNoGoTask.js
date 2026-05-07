@@ -66,6 +66,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [readyForTrial, setReadyForTrial] = useState(false);
 
   const timeoutRef = useRef(null);
   const phaseRef = useRef(currentPhase);
@@ -191,27 +192,24 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     setTrialsForCurrentCategory(trials);
     setCurrentTrialIndex(0);
     setCurrentWord('');
+    setReadyForTrial(false);
     responseReceivedRef.current = false;
     clearTimer();
     categoryStartTimeRef.current = Date.now();
 
     if (currentLevel !== 1) {
-      // Для уровней 2 и 3 сразу переходим к стимулу, но запускаем пробу с задержкой 0,
-      // чтобы React успел обновить trialsRef.current
       setCurrentPhase('stimulus');
-      setTimeout(() => {
-        if (trialsRef.current && trialsRef.current.length > 0) {
-          runTrialRef.current(0);
-        } else {
-          console.error('Trials not ready, restarting category');
-          completeCategoryRef.current();
-        }
-      }, 0);
+      setTimeout(() => setReadyForTrial(true), 50);
     } else {
-      // Для уровня 1 показываем экран категории
       setCurrentPhase('category');
     }
   }, [currentLevelCategories, generateTrialsForCategory, clearTimer, currentLevel]);
+
+  useEffect(() => {
+    if (currentPhase === 'stimulus' && readyForTrial && trialsRef.current.length > 0) {
+      runTrialRef.current(0);
+    }
+  }, [currentPhase, readyForTrial]);
 
   const runTrial = useCallback((trialIndex) => {
     const trial = trialsRef.current[trialIndex];
@@ -293,6 +291,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const completeCategory = useCallback(() => {
     clearTimer();
+    setReadyForTrial(false);
     setCurrentPhase('iti');
     timeoutRef.current = setTimeout(() => loadCategory(currentCategoryIndex + 1), config.itiDuration);
   }, [currentCategoryIndex, config.itiDuration, loadCategory, clearTimer]);
@@ -311,6 +310,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       setCurrentWord('');
       responseReceivedRef.current = false;
       setCurrentLevelCategories([]);
+      setReadyForTrial(false);
     } else {
       completeBlockRef.current();
     }
@@ -350,7 +350,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       try {
         await api.post('/block/complete/', { block_id: blockId });
       } catch (e) {
-        console.warn('Не удалось завершить блок (возможно, эндпоинт не реализован):', e);
+        console.warn('Не удалось завершить блок:', e);
       }
     }
     if (onBlockComplete) {
@@ -402,7 +402,9 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }
     if (currentPhase === 'category' && code === 'Space') {
       e.preventDefault();
-      runTrialRef.current(0);
+      setReadyForTrial(false);
+      setCurrentPhase('stimulus');
+      setTimeout(() => setReadyForTrial(true), 50);
       return;
     }
     if (currentPhase === 'stimulus' && !responseReceivedRef.current) {
@@ -502,7 +504,9 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
               <div className="category-label">Категория</div>
               <div className="category-name">{currentCategory?.name}</div>
               {currentCategory?.name === 'Фрукты' && (
-                <div className="category-reminder">Помните, ягоды — не фрукты</div>
+                <div className="category-reminder" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#d9534f' }}>
+                  ⚠️ ВАЖНО: ягоды (клубника, малина, черника и т.д.) НЕ относятся к фруктам.
+                </div>
               )}
               <p className="space-message">[ПРОБЕЛ] начать тест</p>
             </div>

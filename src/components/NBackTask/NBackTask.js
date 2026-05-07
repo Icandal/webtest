@@ -3,11 +3,16 @@ import './NBackTask.css';
 import { nbackApi } from '../utils/api';
 
 const NBACK_CONFIG = {
-  trialsPerLevel: 50, // 50 в реальном эксперименте
+  trialsPerLevel: 50,
   stimulusDuration: 2000,
   fixationDuration: 2000,
   itiDuration: 0,
   nLevels: [1, 2],
+};
+
+const NBACK_KEYS = {
+  target: ['ArrowRight'],
+  nontarget: ['ArrowLeft']
 };
 
 const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
@@ -29,7 +34,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const phaseRef = useRef(displayPhase);
   const letters = ['A', 'M', 'O', 'T'];
 
-  // Следим за актуальной фазой
   useEffect(() => {
     phaseRef.current = displayPhase;
   }, [displayPhase]);
@@ -67,6 +71,40 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, [clearAllTimeouts]);
 
+  const responseReceivedForCurrentTrial = () => {
+    const last = experimentDataRef.current[experimentDataRef.current.length - 1];
+    return last?.responded === true;
+  };
+
+  const handleResponse = useCallback((responseType) => {
+    const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
+    if (!lastTrial || lastTrial.responded) return;
+
+    lastTrial.responded = true;
+    lastTrial.response = responseType;
+    lastTrial.client_response_time = Date.now();
+
+    const isTarget = lastTrial.is_target;
+    if (responseType === 'target') {
+      lastTrial.is_correct = isTarget;
+      if (isTarget) lastTrial.is_hit = true;
+      else lastTrial.is_false_alarm = true;
+    } else {
+      lastTrial.is_correct = !isTarget;
+      if (!isTarget) lastTrial.is_correct_rejection = true;
+      else lastTrial.is_miss = true;
+    }
+
+    clearAllTimeouts();
+    setDisplayPhase('fixation');
+    fixationTimeoutRef.current = setTimeout(() => {
+      setDisplayPhase('iti');
+      itiTimeoutRef.current = setTimeout(() => {
+        nextTrial();
+      }, NBACK_CONFIG.itiDuration);
+    }, NBACK_CONFIG.fixationDuration);
+  }, [clearAllTimeouts, nextTrial]);
+
   const handleNoResponse = useCallback(() => {
     const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
     if (lastTrial && !lastTrial.responded) {
@@ -90,39 +128,28 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     }, NBACK_CONFIG.fixationDuration);
   }, [nextTrial]);
 
-  const handleResponse = useCallback(() => {
-    const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
-    if (lastTrial && !lastTrial.responded) {
-      lastTrial.response = 'target';
-      lastTrial.client_response_time = Date.now();
-      lastTrial.responded = true;
-      if (lastTrial.is_target) {
-        lastTrial.is_correct = true;
-        lastTrial.is_hit = true;
-      } else {
-        lastTrial.is_correct = false;
-        lastTrial.is_false_alarm = true;
-      }
-      clearAllTimeouts();
-      setDisplayPhase('fixation');
-      fixationTimeoutRef.current = setTimeout(() => {
-        setDisplayPhase('iti');
-        itiTimeoutRef.current = setTimeout(() => {
-          nextTrial();
-        }, NBACK_CONFIG.itiDuration);
-      }, NBACK_CONFIG.fixationDuration);
-    }
-  }, [clearAllTimeouts, nextTrial]);
-
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.code === 'Space' || e.key === ' ') {
+      const { code } = e;
+
+      if (code === 'Space' || code === ' ') {
         e.preventDefault();
         if (displayPhase === 'instructions' && !isRunningRef.current) {
           isRunningRef.current = true;
           startExperiment();
-        } else if (displayPhase === 'stimulus') {
-          handleResponse();
+        } else if (displayPhase === 'stimulus' && !responseReceivedForCurrentTrial()) {
+          handleResponse('target');
+        }
+        return;
+      }
+
+      if (displayPhase === 'stimulus' && !responseReceivedForCurrentTrial()) {
+        if (NBACK_KEYS.target.includes(code)) {
+          e.preventDefault();
+          handleResponse('target');
+        } else if (NBACK_KEYS.nontarget.includes(code)) {
+          e.preventDefault();
+          handleResponse('nontarget');
         }
       }
     };
@@ -163,7 +190,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       n_level: nLevel,
       stimulus: randomLetter,
       is_target: isTarget,
-      correct_response: isTarget ? 'target' : 'no_response',
+      correct_response: isTarget ? 'target' : 'nontarget',
       client_start_time: startTime,
       client_stimulus_time: stimulusTime,
       client_fixation_time: fixationTime,
@@ -173,7 +200,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     });
 
     stimulusTimeoutRef.current = setTimeout(() => {
-      // Используем ref для проверки актуальной фазы
       if (phaseRef.current === 'stimulus') {
         handleNoResponse();
       }
@@ -208,7 +234,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         n_level: trial.n_level || 1,
         stimulus: trial.stimulus || '',
         response: trial.response || null,
-        correct_response: trial.correct_response || (trial.is_target ? 'target' : 'no_response'),
+        correct_response: trial.correct_response || (trial.is_target ? 'target' : 'nontarget'),
         is_target: trial.is_target || false,
         is_correct: trial.is_correct || null,
         client_start_time: trial.client_start_time || Date.now(),
@@ -250,14 +276,9 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         <>
           <p>
             <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы,
-            и ваша задача — сравнивать текущую букву с той, которая была <b> показана перед ней. </b>
-            При совпадении нажмите ПРОБЕЛ.
+            и ваша задача — сравнивать текущую букву с той, которая была <b>показана перед ней.</b>
           </p>
-          <p>
-            Например, в последовательности А‑Б-<span style={{color: 'green'}}>В</span>-
-            <span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным),
-            а в А‑В‑Б‑А – нет.
-          </p>
+          <p>Например, в последовательности А‑Б‑<span style={{color: 'green'}}>В</span>-<span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным), а в А‑В‑Б‑А – нет.</p>
         </>
       );
     } else {
@@ -265,14 +286,9 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         <>
           <p>
             <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы,
-            и ваша задача — сравнивать текущую букву с той, которая была<b> показана два шага назад. </b>
-            При совпадении нажмите ПРОБЕЛ.
+            и ваша задача — сравнивать текущую букву с той, которая была <b>показана два шага назад.</b>
           </p>
-          <p>
-            Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б‑
-            <span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным),
-            а в А‑В‑Б‑А – нет.
-          </p>
+          <p>Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б-<span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным), а в А‑В‑Б‑А – нет.</p>
         </>
       );
     }
@@ -287,13 +303,14 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             <h3>Сложность: {displayLevel}</h3>
             {getInstructionText(displayLevel)}
             <div className="instruction-details">
-              <p>◉ Отвечайте как можно быстрее но правильно</p>
-              <p>◉ Реагируйте только на точные совпадения</p>
-              <p>◉ Если нет совпадения - ничего не нажимайте</p>
+              <p>◉ Отвечайте как можно быстрее, но правильно</p>
+              <p>◉ <span className="instruction-right">Стрелка вправо →</span> – буква совпадает с N шагов назад</p>
+              <p>◉ <span className="instruction-left">Стрелка влево ←</span> – буква НЕ совпадает</p>
+              <p>◉ Если не уверены – лучше не отвечайте, чем отвечать наугад</p>
             </div>
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
-                Нажмите <span className="space-key">ПРОБЕЛ</span> чтобы начать
+                Нажмите <span className="space-key">ПРОБЕЛ</span> или <span className="space-key">→</span> чтобы начать
               </p>
             </div>
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {NBACK_CONFIG.nLevels.length}</div>
