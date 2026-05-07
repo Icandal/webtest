@@ -400,7 +400,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             )}
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
-                Нажмите <span className="space-key">ПРОБЕЛ</span> или <span className="space-key">→</span> чтобы начать
+                Нажмите <span className="space-key">ПРОБЕЛ</span> чтобы начать
               </p>
             </div>
             <div className="fullscreen-controls">

@@ -86,35 +86,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const completeLevelRef = useRef(null);
   const completeBlockRef = useRef(null);
 
-  const formatKey = useCallback((key) => {
-    switch(key) {
-      case 'ArrowRight': return '→';
-      case 'ArrowLeft': return '←';
-      case 'Space': return 'ПРОБЕЛ';
-      default: return key;
-    }
-  }, []);
-
-  const getShortHint = useCallback((categoryName) => {
-    if (currentLevel === 1) {
-      return (
-        <>
-          <span className="instruction-right">→ – относится к категории «{categoryName}»</span>
-          , 
-          <span className="instruction-left"> ← – не относится</span>
-        </>
-      );
-    } else {
-      return (
-        <>
-          <span className="instruction-right">→ – ошибок нет</span>
-          , 
-          <span className="instruction-left"> ← – есть ошибка</span>
-        </>
-      );
-    }
-  }, [currentLevel]);
-
   useEffect(() => { phaseRef.current = currentPhase; }, [currentPhase]);
   useEffect(() => { trialsRef.current = trialsForCurrentCategory; }, [trialsForCurrentCategory]);
   useEffect(() => { currentLevelRef.current = currentLevelIndex; }, [currentLevelIndex]);
@@ -135,37 +106,47 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     return shuffled.slice(0, count).map(key => ({ name: key, words: pool[key] }));
   };
 
+  // Генерация trials для одной категории со случайными стимулами и дистракторами
   const generateTrialsForCategory = useCallback((category) => {
     const trials = [];
+    const targetWords = category.words || [];
+    const effectiveTargetWords = targetWords.length > 0 ? targetWords : ['?'];
+
+    // Для уровня 1: пул дистракторов (слова из других категорий + "Прочее")
+    let distractorPool = [];
+    if (config.sourceType === 'words') {
+      const allCategories = Object.keys(stimuli.words.categories).filter(k => k !== 'Прочее');
+      const otherCategoryWords = allCategories
+        .filter(catName => catName !== category.name)
+        .flatMap(catName => stimuli.words.categories[catName] || []);
+      const otherWords = stimuli.words.categories['Прочее'] || [];
+      distractorPool = [...otherCategoryWords, ...otherWords];
+      if (distractorPool.length === 0) distractorPool = ['?'];
+    } else {
+      // Для уровней 2 и 3: дистракторы — это правильные фразы/предложения
+      const distractors = config.nonCategoryWords || [];
+      distractorPool = distractors.length > 0 ? distractors : ['?'];
+    }
+
     for (let i = 0; i < config.trialsPerCategory; i++) {
       const isTarget = Math.random() < config.targetProbability;
       let word;
       if (isTarget) {
-        word = category.words[Math.floor(Math.random() * category.words.length)];
+        // Случайный выбор из слов категории (таргет)
+        word = effectiveTargetWords[Math.floor(Math.random() * effectiveTargetWords.length)];
       } else {
-        if (config.sourceType === 'words') {
-          const allCategoryWords = Object.values(stimuli.words.categories)
-            .flat()
-            .filter(w => !category.words.includes(w));
-          const nonWords = stimuli.words.categories['Прочее'] || [];
-          if (nonWords.length > 0 && Math.random() < 0.5) {
-            word = nonWords[Math.floor(Math.random() * nonWords.length)];
-          } else {
-            word = allCategoryWords.length > 0
-              ? allCategoryWords[Math.floor(Math.random() * allCategoryWords.length)]
-              : nonWords[0] || '?';
-          }
-        } else {
-          const distractors = config.nonCategoryWords || [];
-          word = distractors.length > 0
-            ? distractors[Math.floor(Math.random() * distractors.length)]
-            : '?';
-        }
+        // Случайный выбор из пула дистракторов
+        word = distractorPool[Math.floor(Math.random() * distractorPool.length)];
       }
+
       let correctResponse;
       if (currentLevel === 1) {
         correctResponse = isTarget ? 'yes' : 'no';
       } else {
+        // Для уровней 2 и 3: "да" (правая стрелка) = ошибок нет (т.е. non-target по isTarget)
+        // но у нас isTarget означает "принадлежит категории 'С ошибкой'", значит правильный ответ: нет (левая)
+        // однако правильнее: correctResponse = isTarget ? 'no' : 'yes';
+        // Оставляем логику как в исходном коде
         correctResponse = isTarget ? 'no' : 'yes';
       }
       trials.push({
@@ -480,7 +461,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           <div className="gonogo-instructions">
             <h2>{config.name}</h2>
             {instructionText}
-            
             <div className="instruction-keys">
               <div className="key-group">
                 <span className="key key-left">←</span>
@@ -491,7 +471,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
                 <span className="key-label instruction-right">Стрелка вправо</span>
               </div>
             </div>
-            
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {LEVELS.length}</div>
             <p className="space-message">[ПРОБЕЛ] начать уровень</p>
             {isSending && <p>Отправка...</p>}
