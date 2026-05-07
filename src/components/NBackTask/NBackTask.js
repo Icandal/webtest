@@ -374,7 +374,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
               <p>◉ Отвечайте как можно быстрее, но правильно</p>
               <p>◉ <span className="instruction-right">Стрелка вправо →</span> – буква совпадает</p>
               <p>◉ <span className="instruction-left">Стрелка влево ←</span> – буква НЕ совпадает</p>
-              <p>◉ Если не уверены – лучше не отвечайте</p>
             </div>
             <div className="instruction-keys">
               <div className="key-group">
