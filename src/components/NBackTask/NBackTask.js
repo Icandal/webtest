@@ -1,3 +1,5 @@
+// NBackTask.js (исправленный с единой инструкцией и полноэкранным режимом)
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './NBackTask.css';
 import { nbackApi } from '../utils/api';
@@ -22,6 +24,8 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const [showSpaceMessage, setShowSpaceMessage] = useState(true);
   const [isSendingData, setIsSendingData] = useState(false);
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
 
   const experimentDataRef = useRef([]);
   const isRunningRef = useRef(false);
@@ -128,9 +132,73 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     }, NBACK_CONFIG.fixationDuration);
   }, [nextTrial]);
 
+  const isFullscreenSupported = useCallback(() => {
+    return document.fullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
+  }, []);
+
+  const getFullscreenElement = useCallback(() => {
+    return document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
+  }, []);
+
+  const safeRequestFullscreen = useCallback(async (element) => {
+    if (!element || !isFullscreenSupported()) return false;
+    try {
+      const methods = ['requestFullscreen', 'mozRequestFullScreen', 'webkitRequestFullscreen', 'msRequestFullscreen'];
+      const method = methods.find(m => element[m] !== undefined);
+      if (!method) return false;
+      const promise = element[method]();
+      if (promise) await promise;
+      return true;
+    } catch (error) {
+      setShowFullscreenPrompt(true);
+      return false;
+    }
+  }, [isFullscreenSupported]);
+
+  const enterFullscreen = useCallback(async () => {
+    const success = await safeRequestFullscreen(document.documentElement);
+    if (success) setShowFullscreenPrompt(false);
+    return success;
+  }, [safeRequestFullscreen]);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (getFullscreenElement()) exitFullscreen();
+    else enterFullscreen();
+  }, [enterFullscreen, exitFullscreen, getFullscreenElement]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsFullscreen(!!getFullscreenElement());
+    const events = ['fullscreenchange', 'mozfullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'];
+    events.forEach(event => document.addEventListener(event, handleFullscreenChange));
+    return () => events.forEach(event => document.removeEventListener(event, handleFullscreenChange));
+  }, [getFullscreenElement]);
+
+  useEffect(() => {
+    if (displayPhase === 'instructions' && !getFullscreenElement() && !showFullscreenPrompt) {
+      const timer = setTimeout(() => setShowFullscreenPrompt(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [displayPhase, getFullscreenElement, showFullscreenPrompt]);
+
   useEffect(() => {
     const handleKeyPress = (e) => {
       const { code } = e;
+
+      if (code === 'F11') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+
+      if (code === 'Escape' && isFullscreen && displayPhase === 'instructions') {
+        exitFullscreen();
+      }
 
       if (code === 'Space' || code === ' ') {
         e.preventDefault();
@@ -155,7 +223,7 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [displayPhase, handleResponse]);
+  }, [displayPhase, handleResponse, toggleFullscreen, exitFullscreen, isFullscreen]);
 
   const startExperiment = () => {
     currentTrialRef.current = 1;
@@ -275,20 +343,20 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       return (
         <>
           <p>
-            <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы,
-            и ваша задача — сравнивать текущую букву с той, которая была <b>показана перед ней.</b>
+            <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы.
+            Ваша задача — сравнивать текущую букву с той, которая была <b>показана перед ней</b>.
           </p>
-          <p>Например, в последовательности А‑Б‑<span style={{color: 'green'}}>В</span>-<span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным), а в А‑В‑Б‑А – нет.</p>
+          <p>Например, в последовательности А‑Б‑<span style={{color: 'green'}}>В</span>-<span style={{color: 'green'}}>В</span> есть совпадение, а в А‑В‑Б‑А – нет.</p>
         </>
       );
     } else {
       return (
         <>
           <p>
-            <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы,
-            и ваша задача — сравнивать текущую букву с той, которая была <b>показана два шага назад.</b>
+            <strong>Тест 2:</strong> Вам будут по одному предъявляться буквы.
+            Ваша задача — сравнивать текущую букву с той, которая была <b>показана два шага назад</b>.
           </p>
-          <p>Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б-<span style={{color: 'green'}}>В</span> есть совпадение (выделено зелёным), а в А‑В‑Б‑А – нет.</p>
+          <p>Например, в последовательности А‑<span style={{color: 'green'}}>В</span>‑Б-<span style={{color: 'green'}}>В</span> есть совпадение, а в А‑В‑Б‑А – нет.</p>
         </>
       );
     }
@@ -304,14 +372,43 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             {getInstructionText(displayLevel)}
             <div className="instruction-details">
               <p>◉ Отвечайте как можно быстрее, но правильно</p>
-              <p>◉ <span className="instruction-right">Стрелка вправо →</span> – буква совпадает с N шагов назад</p>
+              <p>◉ <span className="instruction-right">Стрелка вправо →</span> – буква совпадает</p>
               <p>◉ <span className="instruction-left">Стрелка влево ←</span> – буква НЕ совпадает</p>
-              <p>◉ Если не уверены – лучше не отвечайте, чем отвечать наугад</p>
+              <p>◉ Если не уверены – лучше не отвечайте</p>
             </div>
+            <div className="instruction-keys">
+              <div className="key-group">
+                <span className="key key-left">←</span>
+                <span className="key-label instruction-left">Стрелка влево (не совпадает)</span>
+              </div>
+              <div className="key-group">
+                <span className="key key-right">→</span>
+                <span className="key-label instruction-right">Стрелка вправо (совпадает)</span>
+              </div>
+            </div>
+            {showFullscreenPrompt && !isFullscreen && (
+              <div className="fullscreen-prompt-overlay">
+                <div className="fullscreen-prompt-content">
+                  <p className="fullscreen-prompt-title">🔍 Рекомендуется полноэкранный режим</p>
+                  <p className="fullscreen-prompt-text">Для лучшего погружения включите полноэкранный режим</p>
+                  <div className="fullscreen-prompt-buttons">
+                    <button className="fullscreen-prompt-btn primary" onClick={enterFullscreen}>Включить полноэкранный режим</button>
+                    <button className="fullscreen-prompt-btn secondary" onClick={() => setShowFullscreenPrompt(false)}>Продолжить без полноэкранного режима</button>
+                  </div>
+                  <p className="fullscreen-prompt-hint">Или нажмите <strong>F11</strong> в любое время</p>
+                </div>
+              </div>
+            )}
             <div className="space-instruction">
               <p className="space-message" style={{ opacity: showSpaceMessage ? 1 : 0.3 }}>
                 Нажмите <span className="space-key">ПРОБЕЛ</span> или <span className="space-key">→</span> чтобы начать
               </p>
+            </div>
+            <div className="fullscreen-controls">
+              <button className="fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? "Выйти из полноэкранного режима (F11)" : "Перейти в полноэкранный режим (F11)"}>
+                {isFullscreen ? '✕ Выйти из полноэкранного' : '⛶ Переключить режим'}
+              </button>
+              <p className="fullscreen-hint">Для лучшего погружения рекомендуется использовать полноэкранный режим</p>
             </div>
             <div className="progress-indicator">Уровень {currentLevelIndex + 1} из {NBACK_CONFIG.nLevels.length}</div>
             {isSendingData && <div className="sending-data"><p>Отправка данных на сервер...</p><div className="spinner small"></div></div>}
