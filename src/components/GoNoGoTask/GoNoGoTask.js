@@ -47,18 +47,16 @@ const shuffleArray = (arr) => {
 };
 
 const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
-  // Состояния для рендера
   const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
   const currentLevel = LEVELS[currentLevelIdx];
   const config = LEVEL_CONFIGS[currentLevel];
 
-  const [phase, setPhase] = useState('instructions'); // instructions, category, stimulus, iti
+  const [phase, setPhase] = useState('instructions');
   const [categoriesForLevel, setCategoriesForLevel] = useState([]);
   const [currentCategory, setCurrentCategory] = useState(null);
   const [currentStimulus, setCurrentStimulus] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  // Refs для хранения актуальных значений (обход замыканий)
   const phaseRef = useRef(phase);
   const trialsRef = useRef([]);
   const trialIndexRef = useRef(0);
@@ -70,12 +68,11 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const stimulusStartTimeRef = useRef(null);
   const responseReceivedRef = useRef(false);
   const startExperimentRef = useRef(false);
+  const trialShouldRunRef = useRef(false); // флаг для запуска пробы после перехода в stimulus
 
-  // Refs для функций, чтобы вызывать всегда актуальную версию
   const runTrialRef = useRef(null);
   const completeCategoryOrLevelRef = useRef(null);
 
-  // Синхронизация ref с состоянием
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { categoriesForLevelRef.current = categoriesForLevel; }, [categoriesForLevel]);
 
@@ -86,7 +83,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, []);
 
-  // Генерация массива проб для текущей категории / уровня
   const generateTrials = useCallback((categoryName = null) => {
     const trialsCount = config.trialsPerCategory;
     const targetProb = config.targetProbability;
@@ -140,13 +136,11 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     return shuffleArray(trials);
   }, [config.trialsPerCategory, config.targetProbability, currentLevel]);
 
-  // Завершение текущей категории (для уровня 1) или уровня (для 2/3) и переход дальше
   const completeCategoryOrLevel = useCallback(() => {
     clearTimer();
     if (currentLevel === 1) {
       const nextIdx = currentCategoryIdxRef.current + 1;
       if (nextIdx < categoriesForLevelRef.current.length) {
-        // Следующая категория
         const nextCategory = categoriesForLevelRef.current[nextIdx];
         const newTrials = generateTrials(nextCategory.name);
         trialsRef.current = newTrials;
@@ -158,9 +152,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
         responseReceivedRef.current = false;
         return;
       }
-      // Все категории уровня 1 пройдены – переход на следующий уровень
     }
-    // Переход на следующий уровень или завершение блока
     const nextLevel = currentLevelIdx + 1;
     if (nextLevel < LEVELS.length) {
       setCurrentLevelIdx(nextLevel);
@@ -173,16 +165,13 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       responseReceivedRef.current = false;
       startExperimentRef.current = false;
     } else {
-      // Завершение всего блока
       completeBlockRef.current();
     }
   }, [currentLevelIdx, generateTrials, clearTimer]);
 
-  // Запуск пробы
   const runTrial = useCallback(() => {
     clearTimer();
     if (trialIndexRef.current >= trialsRef.current.length) {
-      // Текущая категория / уровень завершены
       completeCategoryOrLevelRef.current();
       return;
     }
@@ -193,7 +182,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     setPhase('stimulus');
     timeoutRef.current = setTimeout(() => {
       if (!responseReceivedRef.current && phaseRef.current === 'stimulus') {
-        // Нет ответа
         const trialData = {
           experiment_block: parseInt(blockId),
           global_trial_number: blockDataRef.current.length + 1,
@@ -223,7 +211,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }, config.stimulusDuration);
   }, [blockId, currentLevel, config.stimulusDuration, config.itiDuration, clearTimer]);
 
-  // Сохранение ответа
   const saveResponse = useCallback((responseType, reactionTime) => {
     if (responseReceivedRef.current) return;
     const trial = trialsRef.current[trialIndexRef.current];
@@ -257,10 +244,8 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }, config.itiDuration);
   }, [blockId, currentLevel, config.itiDuration, clearTimer]);
 
-  // Запуск уровня (после инструкции)
   const startLevel = useCallback(() => {
     if (currentLevel === 1) {
-      // Случайный выбор 3 категорий
       const allCats = stimuli.words.categories;
       const categoryNames = Object.keys(allCats).filter(name => name !== 'Прочее');
       const shuffled = shuffleArray(categoryNames);
@@ -278,7 +263,6 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       responseReceivedRef.current = false;
       setPhase('category');
     } else {
-      // Уровни 2 и 3
       const dummyCategoryName = currentLevel === 2 ? 'Фразы' : 'Предложения';
       const trials = generateTrials(dummyCategoryName);
       trialsRef.current = trials;
@@ -286,14 +270,11 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       categoryStartTimeRef.current = Date.now();
       responseReceivedRef.current = false;
       setPhase('stimulus');
-      setTimeout(() => {
-        runTrialRef.current();
-      }, 50);
+      trialShouldRunRef.current = true; // запрос на запуск пробы
     }
     startExperimentRef.current = true;
   }, [currentLevel, config.numCategoriesToSelect, generateTrials]);
 
-  // Завершение блока и отправка данных
   const completeBlock = useCallback(async () => {
     setIsSending(true);
     let sendSuccess = false;
@@ -344,29 +325,32 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     }
   }, [blockId, onBlockComplete, participantId, config.trialsPerCategory]);
 
-  // Обновление ref-функций
   useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
   useEffect(() => { completeCategoryOrLevelRef.current = completeCategoryOrLevel; }, [completeCategoryOrLevel]);
   const completeBlockRef = useRef(completeBlock);
   useEffect(() => { completeBlockRef.current = completeBlock; }, [completeBlock]);
 
-  // Обработка клавиш
+  // Запуск пробы после перехода в фазу stimulus (для уровней 2/3 и после категории)
+  useEffect(() => {
+    if (phase === 'stimulus' && trialShouldRunRef.current) {
+      trialShouldRunRef.current = false;
+      runTrialRef.current();
+    }
+  }, [phase]);
+
   const handleKeyDown = useCallback((e) => {
     const { code } = e;
-    // Инструкции
     if (phase === 'instructions' && code === 'Space') {
       e.preventDefault();
       if (!startExperimentRef.current) startLevel();
       return;
     }
-    // Экран категории (только уровень 1)
     if (phase === 'category' && code === 'Space') {
       e.preventDefault();
       setPhase('stimulus');
-      setTimeout(() => runTrialRef.current(), 50);
+      trialShouldRunRef.current = true;
       return;
     }
-    // Фаза стимула
     if (phase === 'stimulus' && !responseReceivedRef.current) {
       const yesKeys = config.keys.yes;
       const noKeys = config.keys.no;
@@ -390,15 +374,88 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
     return () => clearTimer();
   }, [clearTimer]);
 
-  // Рендер
   const renderContent = () => {
     if (phase === 'instructions') {
-      let instr;
-      if (currentLevel === 1) instr = (<>...</>); // полный текст из предыдущей версии
-      else if (currentLevel === 2) instr = (<>...</>);
-      else instr = (<>...</>);
-      // Для краткости здесь сокращённо, но вы можете вставить полные инструкции из предыдущего кода
-      return <div className="gonogo-instructions">...</div>;
+      let instructionText;
+      if (currentLevel === 1) {
+        instructionText = (
+          <>
+            <p>
+              В этом тесте вам будет показана категория – животные, растения, и т.д.
+              Затем вам будут по одному показаны слова.
+              Вам нужно определить, относится ли каждое слово к объявленной категории.
+            </p>
+            <p>
+              Если да – <span className="instruction-right">нажмите <strong>→</strong></span>, если нет –{' '}
+              <span className="instruction-left">нажмите <strong>←</strong></span>.
+            </p>
+            <p>
+              Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание
+              на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.
+            </p>
+            <p><strong>Время теста составит примерно 5 минут.</strong></p>
+          </>
+        );
+      } else if (currentLevel === 2) {
+        instructionText = (
+          <>
+            <p>
+              В данном задании на экране будут показаны словосочетания и простые короткие предложения.
+              Ваша задача — определить, содержит ли словосочетание или предложение ошибку (любую: орфографическую,
+              грамматическую, пунктуационную и т.д.) или ошибок нет.
+            </p>
+            <p>
+              <span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>,{' '}
+              <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.
+            </p>
+            <p>
+              Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание
+              на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.
+            </p>
+            <p><strong>Время теста составит примерно 2 минуты.</strong></p>
+          </>
+        );
+      } else {
+        instructionText = (
+          <>
+            <p>
+              В данном задании на экране будут показаны предложения.
+              Ваша задача — определить, содержит ли эти предложения ошибку (любую: орфографическую,
+              грамматическую, пунктуационную и т.д.) или ошибок нет.
+            </p>
+            <p>
+              <span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>,{' '}
+              <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.
+            </p>
+            <p>
+              Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание
+              на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.
+            </p>
+            <p><strong>Время теста составит примерно 2 минуты.</strong></p>
+          </>
+        );
+      }
+      return (
+        <div className="gonogo-instructions">
+          <h2>{config.name}</h2>
+          {instructionText}
+          <div className="instruction-keys">
+            <div className="key-group">
+              <span className="key key-left">←</span>
+              <span className="key-label instruction-left">Стрелка влево</span>
+            </div>
+            <div className="key-group">
+              <span className="key key-right">→</span>
+              <span className="key-label instruction-right">Стрелка вправо</span>
+            </div>
+          </div>
+          <div className="progress-indicator">
+            Уровень {currentLevelIdx + 1} из {LEVELS.length}
+          </div>
+          <p className="space-message">[ПРОБЕЛ] начать уровень</p>
+          {isSending && <p>Отправка...</p>}
+        </div>
+      );
     }
     if (phase === 'category') {
       return (
