@@ -71,6 +71,12 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
   const [shuffledQuestions, setShuffledQuestions] = useState([]);
   const [isSending, setIsSending] = useState(false);
 
+  // Демографические поля
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState('');
+  const [demographicsError, setDemographicsError] = useState('');
+  const [isSavingDemographics, setIsSavingDemographics] = useState(false);
+
   const questionStartTimeRef = useRef(null);
   const blockDataRef = useRef([]);
   const timeoutRef = useRef(null);
@@ -92,9 +98,42 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
   }, []);
 
   const startQuestionnaire = () => {
+    setPhase('demographics');
+  };
+
+  const handleDemographicsSubmit = async () => {
+    // Валидация возраста
+    const ageNum = parseInt(age, 10);
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+      setDemographicsError('Пожалуйста, укажите корректный возраст (от 1 до 120 лет).');
+      return;
+    }
+    if (gender !== 'Мужской' && gender !== 'Женский') {
+      setDemographicsError('Пожалуйста, выберите ваш пол.');
+      return;
+    }
+    setDemographicsError('');
+    setIsSavingDemographics(true);
+
+    try {
+      // Отправляем демографические данные на сервер
+      await api.post('/participant/demographics/', {
+        participant_id: participantId,
+        age: ageNum,
+        gender: gender,
+      });
+    } catch (error) {
+      console.error('Ошибка сохранения демографии:', error);
+      // Можно показать ошибку, но продолжить опросник
+    } finally {
+      setIsSavingDemographics(false);
+    }
+
+    // Переходим к вопросам
     setPhase('question');
-    questionStartTimeRef.current = Date.now();
+    setCurrentIndex(0);
     setValue(50);
+    questionStartTimeRef.current = Date.now();
   };
 
   const handleSliderChange = (e) => {
@@ -109,7 +148,7 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
 
     const responseData = {
       experiment_block: parseInt(blockId),
-      trial_number: currentIndex + 1,
+      trial_number: currentIndex + 1, // нумерация с 1, демография уже отдельно
       question_text: question,
       response_value: value,
       reaction_time: reactionTime,
@@ -185,7 +224,7 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
             <p>
               В следующих слайдах вам будет предложено ответить на несколько простых вопросов о ваших привычках
               и опыте использования современных продуктов искусственного интеллекта (ИИ), включая языковые модели
-              и интеллектуальные сервисы, такие как <b> ChatGPT, DeepSeek, GigaChat, Google Gemini, Microsoft Copilot,
+              и интеллектуальные сервисы, такие как <b>ChatGPT, DeepSeek, GigaChat, Google Gemini, Microsoft Copilot,
               Claude, Perplexity, </b> а также голосовые ассистенты (например,<b> Siri, Alexa, Алиса, Google Assistant</b>)
               и другие подобные решения. Пожалуйста, отвечайте честно и внимательно, выбирая вариант, который
               наиболее точно отражает ваш опыт.
@@ -194,8 +233,59 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
               Ответ будет записываться с помощью слайдера. Перемещайте ползунок вправо, если вы согласны
               с утверждением, и влево — если не согласны. Этот этап займёт не более 5 минут.
             </p>
-            <p>Помните, все ответы анонимны.</p> 
+            <p>Помните, все ответы анонимны.</p>
             <button className="start-btn" onClick={startQuestionnaire}>Начать</button>
+          </div>
+        );
+      case 'demographics':
+        return (
+          <div className="questionnaire-demographics">
+            <h3>Пожалуйста, ответьте на несколько вопросов о себе</h3>
+            {demographicsError && <div className="error-message">{demographicsError}</div>}
+            <div className="demographics-field">
+              <label>Сколько вам лет?</label>
+              <input
+                type="number"
+                min="1"
+                max="120"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="Введите возраст"
+                disabled={isSavingDemographics}
+              />
+            </div>
+            <div className="demographics-field">
+              <label>Ваш пол:</label>
+              <div className="radio-group">
+                <label>
+                  <input
+                    type="radio"
+                    value="Мужской"
+                    checked={gender === 'Мужской'}
+                    onChange={(e) => setGender(e.target.value)}
+                    disabled={isSavingDemographics}
+                  />
+                  Мужской
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    value="Женский"
+                    checked={gender === 'Женский'}
+                    onChange={(e) => setGender(e.target.value)}
+                    disabled={isSavingDemographics}
+                  />
+                  Женский
+                </label>
+              </div>
+            </div>
+            <button 
+              className="next-btn" 
+              onClick={handleDemographicsSubmit}
+              disabled={isSavingDemographics}
+            >
+              {isSavingDemographics ? 'Сохранение...' : 'Далее'}
+            </button>
           </div>
         );
       case 'question':

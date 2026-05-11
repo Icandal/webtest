@@ -152,3 +152,56 @@
   text-align: center;
   color: #333;
 }
+
+.questionnaire-demographics {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.questionnaire-demographics h3 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.demographics-field {
+  margin-bottom: 20px;
+}
+
+.demographics-field label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.demographics-field input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.radio-group {
+  display: flex;
+  gap: 20px;
+}
+
+.radio-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: normal;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  text-align: center;
+}
