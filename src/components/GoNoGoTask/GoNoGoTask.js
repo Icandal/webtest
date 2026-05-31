@@ -28,7 +28,7 @@ const LEVEL_CONFIGS = {
     name: 'Тест 5 - Сложные предложения',
     sourceType: 'sentences',
     trialsPerCategory: 30,
-    stimulusDuration: 5000,
+    stimulusDuration: 4000,   // 4 секунды (изменено)
     itiDuration: 250,
     targetProbability: 0.5,
     keys: { yes: ['ArrowRight'], no: ['ArrowLeft'] },
@@ -44,6 +44,41 @@ const shuffleArray = (arr) => {
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
+};
+
+// Псевдослучайная генерация с перемешиванием пулов
+const generateTrialsWithShuffledPools = (targetWords, distractorPool, trialsCount, targetProb, level) => {
+  let shuffledTargets = shuffleArray([...targetWords]);
+  let shuffledDistractors = shuffleArray([...distractorPool]);
+  let targetIdx = 0, distractorIdx = 0;
+  const trials = [];
+  for (let i = 0; i < trialsCount; i++) {
+    const isTarget = Math.random() < targetProb;
+    let word;
+    if (isTarget) {
+      word = shuffledTargets[targetIdx % shuffledTargets.length];
+      targetIdx++;
+      if (targetIdx % shuffledTargets.length === 0) shuffledTargets = shuffleArray([...targetWords]);
+    } else {
+      word = shuffledDistractors[distractorIdx % shuffledDistractors.length];
+      distractorIdx++;
+      if (distractorIdx % shuffledDistractors.length === 0) shuffledDistractors = shuffleArray([...distractorPool]);
+    }
+    let correctResponse;
+    if (level === 1) {
+      correctResponse = isTarget ? 'yes' : 'no';   // принадлежит категории → ДА (правая)
+    } else {
+      correctResponse = isTarget ? 'no' : 'yes';   // ошибка есть → НЕТ (левая)
+    }
+    trials.push({
+      trialNumberInCategory: i + 1,
+      category: (level === 1 ? (isTarget ? 'target' : 'distractor') : (isTarget ? 'incorrect' : 'correct')),
+      word,
+      isTarget,
+      correctResponse,
+    });
+  }
+  return trials;
 };
 
 const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
@@ -68,7 +103,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   const stimulusStartTimeRef = useRef(null);
   const responseReceivedRef = useRef(false);
   const startExperimentRef = useRef(false);
-  const trialShouldRunRef = useRef(false); // флаг для запуска пробы после перехода в stimulus
+  const trialShouldRunRef = useRef(false);
 
   const runTrialRef = useRef(null);
   const completeCategoryOrLevelRef = useRef(null);
@@ -77,63 +112,35 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
   useEffect(() => { categoriesForLevelRef.current = categoriesForLevel; }, [categoriesForLevel]);
 
   const clearTimer = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
   }, []);
 
   const generateTrials = useCallback((categoryName = null) => {
     const trialsCount = config.trialsPerCategory;
     const targetProb = config.targetProbability;
-    let targetWords = [];
-    let distractorPool = [];
-
     if (currentLevel === 1) {
       const category = categoriesForLevelRef.current.find(c => c.name === categoryName);
       if (!category) return [];
-      targetWords = category.words || [];
-      if (targetWords.length === 0) targetWords = ['ОШИБКА'];
+      const targetWords = category.words || [];
       const allCategories = stimuli.words.categories;
       const otherWords = Object.keys(allCategories)
         .filter(cat => cat !== category.name)
         .flatMap(cat => allCategories[cat] || []);
-      distractorPool = otherWords.length ? otherWords : ['ОШИБКА'];
-    } else if (currentLevel === 2) {
-      targetWords = stimuli.phrases.incorrect || [];
-      distractorPool = stimuli.phrases.correct || [];
-      if (!targetWords.length) targetWords = ['ОШИБКА'];
-      if (!distractorPool.length) distractorPool = ['ОШИБКА'];
+      const distractorPool = otherWords.length ? otherWords : ['ОШИБКА'];
+      return generateTrialsWithShuffledPools(targetWords, distractorPool, trialsCount, targetProb, 1);
     } else {
-      targetWords = stimuli.sentences.incorrect || [];
-      distractorPool = stimuli.sentences.correct || [];
+      let targetWords = [], distractorPool = [];
+      if (currentLevel === 2) {
+        targetWords = stimuli.phrases.incorrect || [];
+        distractorPool = stimuli.phrases.correct || [];
+      } else {
+        targetWords = stimuli.sentences.incorrect || [];
+        distractorPool = stimuli.sentences.correct || [];
+      }
       if (!targetWords.length) targetWords = ['ОШИБКА'];
       if (!distractorPool.length) distractorPool = ['ОШИБКА'];
+      return generateTrialsWithShuffledPools(targetWords, distractorPool, trialsCount, targetProb, currentLevel);
     }
-
-    const trials = [];
-    for (let i = 0; i < trialsCount; i++) {
-      const isTarget = Math.random() < targetProb;
-      const word = isTarget
-        ? targetWords[Math.floor(Math.random() * targetWords.length)]
-        : distractorPool[Math.floor(Math.random() * distractorPool.length)];
-
-      let correctResponse;
-      if (currentLevel === 1) {
-        correctResponse = isTarget ? 'yes' : 'no';
-      } else {
-        correctResponse = isTarget ? 'no' : 'yes';
-      }
-
-      trials.push({
-        trialNumberInCategory: i + 1,
-        category: categoryName || (currentLevel === 2 ? 'Фразы' : 'Предложения'),
-        word,
-        isTarget,
-        correctResponse,
-      });
-    }
-    return shuffleArray(trials);
   }, [config.trialsPerCategory, config.targetProbability, currentLevel]);
 
   const completeCategoryOrLevel = useCallback(() => {
@@ -165,14 +172,14 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       responseReceivedRef.current = false;
       startExperimentRef.current = false;
     } else {
-      completeBlockRef.current();
+      completeBlock();
     }
-  }, [currentLevelIdx, generateTrials, clearTimer]);
+  }, [currentLevelIdx, generateTrials, clearTimer, currentLevel]);
 
   const runTrial = useCallback(() => {
     clearTimer();
     if (trialIndexRef.current >= trialsRef.current.length) {
-      completeCategoryOrLevelRef.current();
+      completeCategoryOrLevel();
       return;
     }
     const trial = trialsRef.current[trialIndexRef.current];
@@ -209,7 +216,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
         }, config.itiDuration);
       }
     }, config.stimulusDuration);
-  }, [blockId, currentLevel, config.stimulusDuration, config.itiDuration, clearTimer]);
+  }, [blockId, currentLevel, config.stimulusDuration, config.itiDuration, clearTimer, completeCategoryOrLevel]);
 
   const saveResponse = useCallback((responseType, reactionTime) => {
     if (responseReceivedRef.current) return;
@@ -270,7 +277,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
       categoryStartTimeRef.current = Date.now();
       responseReceivedRef.current = false;
       setPhase('stimulus');
-      trialShouldRunRef.current = true; // запрос на запуск пробы
+      trialShouldRunRef.current = true;
     }
     startExperimentRef.current = true;
   }, [currentLevel, config.numCategoriesToSelect, generateTrials]);
@@ -327,10 +334,7 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
 
   useEffect(() => { runTrialRef.current = runTrial; }, [runTrial]);
   useEffect(() => { completeCategoryOrLevelRef.current = completeCategoryOrLevel; }, [completeCategoryOrLevel]);
-  const completeBlockRef = useRef(completeBlock);
-  useEffect(() => { completeBlockRef.current = completeBlock; }, [completeBlock]);
 
-  // Запуск пробы после перехода в фазу stimulus (для уровней 2/3 и после категории)
   useEffect(() => {
     if (phase === 'stimulus' && trialShouldRunRef.current) {
       trialShouldRunRef.current = false;
@@ -386,8 +390,8 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
               Вам нужно определить, относится ли каждое слово к объявленной категории.
             </p>
             <p>
-              Если да – <span className="instruction-right">нажмите <strong>→</strong></span>, если нет –{' '}
-              <span className="instruction-left">нажмите <strong>←</strong></span>.
+              Если да – <span className="instruction-right">нажмите <strong>→</strong> (стрелка вправо на клавиатуре)</span>, если нет –{' '}
+              <span className="instruction-left">нажмите <strong>←</strong> (стрелка влево на клавиатуре)</span>.
             </p>
             <p>
               Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание
@@ -405,8 +409,8 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
               грамматическую, пунктуационную и т.д.) или ошибок нет.
             </p>
             <p>
-              <span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>,{' '}
-              <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.
+              <span className="instruction-right">Нажмите <strong>→</strong> (стрелка вправо)</span>, если ошибок нет (ДА),{' '}
+              <span className="instruction-left"> и <strong>←</strong> (стрелка влево)</span>, если ошибка есть (НЕТ).
             </p>
             <p>
               Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание
@@ -424,14 +428,14 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
               грамматическую, пунктуационную и т.д.) или ошибок нет.
             </p>
             <p>
-              <span className="instruction-right">Нажмите <strong>→</strong>, если ошибок нет</span>,{' '}
-              <span className="instruction-left"> и <strong>←</strong>, если ошибка есть</span>.
+              <span className="instruction-right">Нажмите <strong>→</strong> (стрелка вправо)</span>, если ошибок нет (ДА),{' '}
+              <span className="instruction-left"> и <strong>←</strong> (стрелка влево)</span>, если ошибка есть (НЕТ).
             </p>
             <p>
               Старайтесь отвечать как можно быстрее и правильно, не пропускать стимулы и сохранять внимание
               на протяжении всей последовательности; ошибки возможны — это нормально, продолжайте выполнение.
             </p>
-            <p><strong>Время теста составит примерно 2 минуты.</strong></p>
+            <p><strong>Время теста составит примерно 2.5 минуты.</strong></p>
           </>
         );
       }
@@ -442,11 +446,11 @@ const GoNoGoTask = ({ blockId, participantId, onBlockComplete }) => {
           <div className="instruction-keys">
             <div className="key-group">
               <span className="key key-left">←</span>
-              <span className="key-label instruction-left">Стрелка влево</span>
+              <span className="key-label instruction-left">Стрелка влево (НЕТ)</span>
             </div>
             <div className="key-group">
               <span className="key key-right">→</span>
-              <span className="key-label instruction-right">Стрелка вправо</span>
+              <span className="key-label instruction-right">Стрелка вправо (ДА)</span>
             </div>
           </div>
           <div className="progress-indicator">

@@ -3,9 +3,8 @@ import './FlankerTask.css';
 import api from '../utils/api';
 
 const FLANKER_CONFIG = {
-  trialsPerBlock: 100, //100,
+  trialsPerBlock: 100,
   stimulusDuration: 2000,
-  // fixationDuration удалён – теперь выбирается случайно для каждой пробы
   stimuli: [
     { type: 'congruent', stimulus: '←←←←←', correctResponse: 'left' },
     { type: 'congruent', stimulus: '→→→→→', correctResponse: 'right' },
@@ -26,6 +25,8 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
   const [showSpaceMessage, setShowSpaceMessage] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [reminderVisible, setReminderVisible] = useState(false);
 
   const trialStartRef = useRef(null);
   const stimulusShownRef = useRef(null);
@@ -33,9 +34,10 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
   const blockDataRef = useRef([]);
   const stimulusTimeoutRef = useRef(null);
   const fixationTimeoutRef = useRef(null);
+  const feedbackTimeoutRef = useRef(null);
   const responseReceivedRef = useRef(false);
   const containerRef = useRef(null);
-  const currentFixationDurationRef = useRef(2000); // для хранения текущей длительности фиксации (если нужно для логов)
+  const currentFixationDurationRef = useRef(2000);
 
   const generateTrials = useCallback(() => {
     const generatedTrials = [];
@@ -131,6 +133,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     return () => {
       if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
       if (fixationTimeoutRef.current) clearTimeout(fixationTimeoutRef.current);
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
     };
   }, []);
 
@@ -148,7 +151,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
         client_stimulus_time: t.client_stimulus_time,
         client_fixation_time: t.client_fixation_time,
         client_response_time: t.client_response_time,
-        fixation_duration: t.fixation_duration, // добавим для аналитики
+        fixation_duration: t.fixation_duration,
       }));
       const response = await api.post('/trials/batch/', {
         block_id: blockId,
@@ -197,15 +200,11 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const goToFixationAndNext = useCallback((nextTrialIndex, isLastTrial) => {
     if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
-    
-    // Случайный выбор длительности фиксации: 1000 или 2000 мс
     const fixationDuration = Math.random() < 0.5 ? 1000 : 2000;
     currentFixationDurationRef.current = fixationDuration;
-    
     setCurrentPhase('fixation');
     setCurrentStimulus('+');
     fixationShownRef.current = Date.now();
-
     fixationTimeoutRef.current = setTimeout(() => {
       if (isLastTrial) {
         completeBlock();
@@ -216,49 +215,61 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
     }, fixationDuration);
   }, [completeBlock]);
 
+  const showFeedbackAndContinue = useCallback((isCorrect, nextTrialIndex, isLast) => {
+    setFeedback({ isCorrect });
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setFeedback(null);
+      setReminderVisible(false);
+      goToFixationAndNext(nextTrialIndex, isLast);
+    }, 400);
+  }, [goToFixationAndNext]);
+
   const handleNoResponse = useCallback((trialIndex, trialData) => {
     if (responseReceivedRef.current) return;
     responseReceivedRef.current = true;
-    
-    // Для отсутствия ответа фиксация могла быть разной – передаём последнюю использованную длительность
     blockDataRef.current.push(saveTrialData(trialData, null, null, null, currentFixationDurationRef.current));
-    
     const nextTrial = trialIndex + 1;
     const isLast = nextTrial >= trials.length;
-    goToFixationAndNext(nextTrial, isLast);
-  }, [trials.length, saveTrialData, goToFixationAndNext]);
+    const trialNumber = trialData.trialNumber;
+    if (trialNumber <= 4) {
+      showFeedbackAndContinue(false, nextTrial, isLast);
+    } else {
+      goToFixationAndNext(nextTrial, isLast);
+    }
+  }, [trials.length, saveTrialData, goToFixationAndNext, showFeedbackAndContinue]);
 
   const handleResponse = useCallback((responseMade, trialIndex, trialData, responseTime) => {
     if (responseReceivedRef.current) return;
     responseReceivedRef.current = true;
-    
     if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
-    
     const clientResponseTime = Date.now();
+    const isCorrect = responseMade === trialData.correctResponse;
     blockDataRef.current.push(saveTrialData(trialData, responseMade, responseTime, clientResponseTime, currentFixationDurationRef.current));
-    
     const nextTrial = trialIndex + 1;
     const isLast = nextTrial >= trials.length;
-    goToFixationAndNext(nextTrial, isLast);
-  }, [trials.length, saveTrialData, goToFixationAndNext]);
+    const trialNumber = trialData.trialNumber;
+    if (trialNumber <= 4) {
+      showFeedbackAndContinue(isCorrect, nextTrial, isLast);
+    } else {
+      goToFixationAndNext(nextTrial, isLast);
+    }
+  }, [trials.length, saveTrialData, goToFixationAndNext, showFeedbackAndContinue]);
 
   const startTrial = useCallback((trialIndex) => {
     if (trialIndex >= trials.length) {
       completeBlock();
       return;
     }
-    
     if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
     if (fixationTimeoutRef.current) clearTimeout(fixationTimeoutRef.current);
-    
     const trialData = trials[trialIndex];
     responseReceivedRef.current = false;
     trialStartRef.current = Date.now();
-    
     setCurrentPhase('stimulus');
     setCurrentStimulus(trialData.stimulus);
     stimulusShownRef.current = Date.now();
-    
+    if (trialData.trialNumber <= 4) setReminderVisible(true);
+    else setReminderVisible(false);
     stimulusTimeoutRef.current = setTimeout(() => {
       if (!responseReceivedRef.current) {
         handleNoResponse(trialIndex, trialData);
@@ -268,21 +279,17 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
 
   const handleKeyPress = useCallback((event) => {
     const { code, key } = event;
-    
     if (code === 'F11') {
       event.preventDefault();
       toggleFullscreen();
     }
-    
     if (code === 'Escape' && isFullscreen && currentPhase === 'instructions') {
       exitFullscreen();
     }
-    
     if (currentPhase === 'instructions' && code === 'Space') {
       event.preventDefault();
       startTrial(0);
     }
-    
     if (currentPhase === 'stimulus' && !responseReceivedRef.current && trials[currentTrial]) {
       const isLeftKey = FLANKER_CONFIG.keys.left.includes(key);
       const isRightKey = FLANKER_CONFIG.keys.right.includes(key);
@@ -322,27 +329,27 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
   const renderPhaseContent = () => {
     if (currentPhase === 'instructions') {
       return (
-          <div className="flanker-instructions">
-            <h3 style={{ fontWeight: 'bold' }}>Тест 1</h3>
-            <p>
-              На экране будут появляться последовательности из пяти стрелок, например {'←←←←←'} или {'→→→→→'}.<br />
-              Ваша задача определить, в какую сторону направлена центральная стрелка (
-              {highlightCentralArrow('→→←→→')}) и нажать соответствующую кнопку.<br />
-              Если стрелка направлена влево – <span className="instruction-left">нажмите <strong>←</strong></span>, 
-              если вправо – <span className="instruction-right">нажмите <strong>→</strong></span>.<br />
-              <strong>Важно</strong> – решение нужно принять как можно быстрее, но правильно!<br />
-              Время теста составит примерно 5 минут.
-            </p>
-            <div className="instruction-keys">
-              <div className="key-group">
-                <span className="key key-left">←</span>
-                <span className="key-label instruction-left">Стрелка влево</span>
-              </div>
-              <div className="key-group">
-                <span className="key key-right">→</span>
-                <span className="key-label instruction-right">Стрелка вправо</span>
-              </div>
+        <div className="flanker-instructions">
+          <h3 style={{ fontWeight: 'bold' }}>Тест 1</h3>
+          <p>
+            На экране будут появляться последовательности из пяти стрелок, например {'←←←←←'} или {'→→→→→'}.<br />
+            Ваша задача определить, в какую сторону направлена центральная стрелка (
+            {highlightCentralArrow('→→←→→')}) и нажать соответствующую кнопку.<br />
+            Если стрелка направлена влево – <span className="instruction-left">нажмите <strong>←</strong> (стрелка влево на клавиатуре)</span>, 
+            если вправо – <span className="instruction-right">нажмите <strong>→</strong> (стрелка вправо на клавиатуре)</span>.<br />
+            <strong>Важно</strong> – решение нужно принять как можно быстрее, но правильно!<br />
+            Время теста составит примерно 5 минут.
+          </p>
+          <div className="instruction-keys">
+            <div className="key-group">
+              <span className="key key-left">←</span>
+              <span className="key-label instruction-left">Стрелка влево (НЕТ)</span>
             </div>
+            <div className="key-group">
+              <span className="key key-right">→</span>
+              <span className="key-label instruction-right">Стрелка вправо (ДА)</span>
+            </div>
+          </div>
           {showFullscreenPrompt && !isFullscreen && (
             <div className="fullscreen-prompt-overlay">
               <div className="fullscreen-prompt-content">
@@ -371,17 +378,20 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
       );
     }
     if (currentPhase === 'fixation') {
-      return (
-        <div className="flanker-fixation">
-          {/* Крестик скрыт, но можно раскомментировать, если нужен визуальный фиксатор */}
-          {/* <div className="fixation-cross">{currentStimulus}</div> */}
-        </div>
-      );
+      return <div className="flanker-fixation"></div>;
     }
     if (currentPhase === 'stimulus') {
       return (
         <div className="flanker-stimulus">
           <div className="stimulus">{currentStimulus}</div>
+          {reminderVisible && (
+            <div className="reminder-hint">← НЕТ &nbsp;&nbsp;|&nbsp;&nbsp; ДА →</div>
+          )}
+          {feedback && (
+            <div className={`feedback-overlay ${feedback.isCorrect ? 'correct' : 'incorrect'}`}>
+              {feedback.isCorrect ? '✓ Правильно' : '✗ Неправильно'}
+            </div>
+          )}
         </div>
       );
     }

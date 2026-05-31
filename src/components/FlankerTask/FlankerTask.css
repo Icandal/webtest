@@ -425,3 +425,40 @@
 .key-right {
   background-color: #28a745;
 }
+.reminder-hint {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-family: monospace;
+  pointer-events: none;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.feedback-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+  z-index: 200;
+  animation: fadeOut 0.4s forwards;
+  pointer-events: none;
+}
+.feedback-overlay.correct {
+  color: #4caf50;
+}
+.feedback-overlay.incorrect {
+  color: #f44336;
+}
+@keyframes fadeOut {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+}

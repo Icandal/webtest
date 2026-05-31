@@ -476,4 +476,61 @@
     margin: 10px 0;
     padding: 10px;
   }
+
+  /* Напоминание о клавишах (для первых 4 проб) */
+.reminder-hint {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-family: monospace;
+  pointer-events: none;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+/* Фидбек "Правильно/Неправильно" */
+.feedback-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+  z-index: 200;
+  animation: fadeOut 0.4s forwards;
+  pointer-events: none;
+}
+.feedback-overlay.correct {
+  color: #4caf50;
+}
+.feedback-overlay.incorrect {
+  color: #f44336;
+}
+@keyframes fadeOut {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+/* Адаптация для 2K мониторов */
+@media (min-width: 2560px) {
+  .stimulus-letter { font-size: 160px; }
+  .fixation-cross { font-size: 120px; }
+  .nback-instructions { max-width: 1200px; padding: 40px; }
+  .nback-instructions p, .instruction-details p { font-size: 22px; }
+  .nback-instructions h3 { font-size: 36px; }
+  .n-number { font-size: 54px; padding: 15px 30px; }
+  .sequence-item { width: 70px; height: 70px; font-size: 32px; }
+  .history-item { width: 60px; height: 60px; font-size: 28px; }
+  .space-message { font-size: 24px; }
+  .space-key { padding: 10px 22px; font-size: 20px; }
+  .progress-indicator { font-size: 20px; padding: 15px; }
+  .reminder-hint { font-size: 24px; padding: 12px 24px; bottom: 60px; right: 60px; }
+  .feedback-overlay { font-size: 96px; }
+}
 }

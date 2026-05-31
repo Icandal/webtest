@@ -71,7 +71,6 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
   const [shuffledQuestions, setShuffledQuestions] = useState([]);
   const [isSending, setIsSending] = useState(false);
 
-  // Демографические поля
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [demographicsError, setDemographicsError] = useState('');
@@ -102,7 +101,6 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
   };
 
   const handleDemographicsSubmit = async () => {
-    // Валидация возраста
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
       setDemographicsError('Пожалуйста, укажите корректный возраст (от 1 до 120 лет).');
@@ -116,7 +114,6 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
     setIsSavingDemographics(true);
 
     try {
-      // Отправляем демографические данные на сервер
       await api.post('/participant/demographics/', {
         participant_id: participantId,
         age: ageNum,
@@ -124,12 +121,10 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
       });
     } catch (error) {
       console.error('Ошибка сохранения демографии:', error);
-      // Можно показать ошибку, но продолжить опросник
     } finally {
       setIsSavingDemographics(false);
     }
 
-    // Переходим к вопросам
     setPhase('question');
     setCurrentIndex(0);
     setValue(50);
@@ -148,7 +143,7 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
 
     const responseData = {
       experiment_block: parseInt(blockId),
-      trial_number: currentIndex + 1, // нумерация с 1, демография уже отдельно
+      trial_number: currentIndex + 1,
       question_text: question,
       response_value: value,
       reaction_time: reactionTime,
@@ -298,9 +293,12 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
               {shuffledQuestions[currentIndex]}
             </div>
             <div className="slider-container">
-              <div className="slider-labels">
-                <span className="slider-label-left">Не согласен</span>
-                <span className="slider-label-right">Согласен</span>
+              <div className="slider-labels-multi">
+                <span>Не согласен</span>
+                <span>Скорее не согласен</span>
+                <span>Не знаю</span>
+                <span>Скорее согласен</span>
+                <span>Согласен</span>
               </div>
               <input
                 type="range"
@@ -310,6 +308,13 @@ const PostExperimentQuestionnaire = ({ blockId, participantId, onBlockComplete }
                 onChange={handleSliderChange}
                 className="slider"
               />
+              <div className="current-value-label">
+                {value <= 20 && "Не согласен"}
+                {value > 20 && value <= 40 && "Скорее не согласен"}
+                {value > 40 && value <= 60 && "Не знаю"}
+                {value > 60 && value <= 80 && "Скорее согласен"}
+                {value > 80 && "Согласен"}
+              </div>
             </div>
             <button className="next-btn" onClick={handleNext}>
               {currentIndex + 1 === shuffledQuestions.length ? 'Завершить' : 'Далее'}

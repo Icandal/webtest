@@ -1,5 +1,3 @@
-// NBackTask.js (исправленный с единой инструкцией и полноэкранным режимом)
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './NBackTask.css';
 import { nbackApi } from '../utils/api';
@@ -13,8 +11,8 @@ const NBACK_CONFIG = {
 };
 
 const NBACK_KEYS = {
-  target: ['ArrowRight'],
-  nontarget: ['ArrowLeft']
+  target: ['ArrowRight'],   // правая стрелка → ДА (совпадает)
+  nontarget: ['ArrowLeft']  // левая стрелка ← НЕТ (не совпадает)
 };
 
 const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
@@ -26,12 +24,15 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [reminderVisible, setReminderVisible] = useState(false);
 
   const experimentDataRef = useRef([]);
   const isRunningRef = useRef(false);
   const stimulusTimeoutRef = useRef(null);
   const fixationTimeoutRef = useRef(null);
   const itiTimeoutRef = useRef(null);
+  const feedbackTimeoutRef = useRef(null);
   const historyRef = useRef([]);
   const currentTrialRef = useRef(1);
   const currentLevelRef = useRef(0);
@@ -43,18 +44,10 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   }, [displayPhase]);
 
   const clearAllTimeouts = useCallback(() => {
-    if (stimulusTimeoutRef.current) {
-      clearTimeout(stimulusTimeoutRef.current);
-      stimulusTimeoutRef.current = null;
-    }
-    if (fixationTimeoutRef.current) {
-      clearTimeout(fixationTimeoutRef.current);
-      fixationTimeoutRef.current = null;
-    }
-    if (itiTimeoutRef.current) {
-      clearTimeout(itiTimeoutRef.current);
-      itiTimeoutRef.current = null;
-    }
+    if (stimulusTimeoutRef.current) clearTimeout(stimulusTimeoutRef.current);
+    if (fixationTimeoutRef.current) clearTimeout(fixationTimeoutRef.current);
+    if (itiTimeoutRef.current) clearTimeout(itiTimeoutRef.current);
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
   }, []);
 
   useEffect(() => {
@@ -80,6 +73,21 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     return last?.responded === true;
   };
 
+  const showFeedbackAndContinue = useCallback((isCorrect) => {
+    setFeedback({ isCorrect });
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setFeedback(null);
+      setReminderVisible(false);
+      setDisplayPhase('fixation');
+      fixationTimeoutRef.current = setTimeout(() => {
+        setDisplayPhase('iti');
+        itiTimeoutRef.current = setTimeout(() => {
+          nextTrial();
+        }, NBACK_CONFIG.itiDuration);
+      }, NBACK_CONFIG.fixationDuration);
+    }, 400);
+  }, [nextTrial]);
+
   const handleResponse = useCallback((responseType) => {
     const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
     if (!lastTrial || lastTrial.responded) return;
@@ -89,25 +97,33 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
     lastTrial.client_response_time = Date.now();
 
     const isTarget = lastTrial.is_target;
+    let isCorrect = false;
     if (responseType === 'target') {
-      lastTrial.is_correct = isTarget;
+      isCorrect = isTarget;
       if (isTarget) lastTrial.is_hit = true;
       else lastTrial.is_false_alarm = true;
     } else {
-      lastTrial.is_correct = !isTarget;
+      isCorrect = !isTarget;
       if (!isTarget) lastTrial.is_correct_rejection = true;
       else lastTrial.is_miss = true;
     }
+    lastTrial.is_correct = isCorrect;
 
     clearAllTimeouts();
-    setDisplayPhase('fixation');
-    fixationTimeoutRef.current = setTimeout(() => {
-      setDisplayPhase('iti');
-      itiTimeoutRef.current = setTimeout(() => {
-        nextTrial();
-      }, NBACK_CONFIG.itiDuration);
-    }, NBACK_CONFIG.fixationDuration);
-  }, [clearAllTimeouts, nextTrial]);
+
+    const trialNum = lastTrial.trial_number;
+    if (trialNum <= 4) {
+      showFeedbackAndContinue(isCorrect);
+    } else {
+      setDisplayPhase('fixation');
+      fixationTimeoutRef.current = setTimeout(() => {
+        setDisplayPhase('iti');
+        itiTimeoutRef.current = setTimeout(() => {
+          nextTrial();
+        }, NBACK_CONFIG.itiDuration);
+      }, NBACK_CONFIG.fixationDuration);
+    }
+  }, [clearAllTimeouts, nextTrial, showFeedbackAndContinue]);
 
   const handleNoResponse = useCallback(() => {
     const lastTrial = experimentDataRef.current[experimentDataRef.current.length - 1];
@@ -123,15 +139,23 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         lastTrial.is_correct_rejection = true;
       }
     }
-    setDisplayPhase('fixation');
-    fixationTimeoutRef.current = setTimeout(() => {
-      setDisplayPhase('iti');
-      itiTimeoutRef.current = setTimeout(() => {
-        nextTrial();
-      }, NBACK_CONFIG.itiDuration);
-    }, NBACK_CONFIG.fixationDuration);
-  }, [nextTrial]);
+    clearAllTimeouts();
 
+    const trialNum = lastTrial?.trial_number || 0;
+    if (trialNum <= 4) {
+      showFeedbackAndContinue(false);
+    } else {
+      setDisplayPhase('fixation');
+      fixationTimeoutRef.current = setTimeout(() => {
+        setDisplayPhase('iti');
+        itiTimeoutRef.current = setTimeout(() => {
+          nextTrial();
+        }, NBACK_CONFIG.itiDuration);
+      }, NBACK_CONFIG.fixationDuration);
+    }
+  }, [nextTrial, clearAllTimeouts, showFeedbackAndContinue]);
+
+  // Полноэкранный режим
   const isFullscreenSupported = useCallback(() => {
     return document.fullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
   }, []);
@@ -190,16 +214,13 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
   useEffect(() => {
     const handleKeyPress = (e) => {
       const { code } = e;
-
       if (code === 'F11') {
         e.preventDefault();
         toggleFullscreen();
       }
-
       if (code === 'Escape' && isFullscreen && displayPhase === 'instructions') {
         exitFullscreen();
       }
-
       if (code === 'Space' || code === ' ') {
         e.preventDefault();
         if (displayPhase === 'instructions' && !isRunningRef.current) {
@@ -210,7 +231,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         }
         return;
       }
-
       if (displayPhase === 'stimulus' && !responseReceivedForCurrentTrial()) {
         if (NBACK_KEYS.target.includes(code)) {
           e.preventDefault();
@@ -248,29 +268,27 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
 
     setDisplayLetter(randomLetter);
     setDisplayPhase('stimulus');
+    const trialNumber = experimentDataRef.current.length + 1;
+    if (trialNumber <= 4) setReminderVisible(true);
+    else setReminderVisible(false);
 
     const startTime = Date.now();
-    const stimulusTime = startTime;
-    const fixationTime = stimulusTime + NBACK_CONFIG.stimulusDuration;
-
     experimentDataRef.current.push({
-      trial_number: experimentDataRef.current.length + 1,
+      trial_number: trialNumber,
       n_level: nLevel,
       stimulus: randomLetter,
       is_target: isTarget,
       correct_response: isTarget ? 'target' : 'nontarget',
       client_start_time: startTime,
-      client_stimulus_time: stimulusTime,
-      client_fixation_time: fixationTime,
+      client_stimulus_time: startTime,
+      client_fixation_time: startTime + NBACK_CONFIG.stimulusDuration,
       responded: false,
       response: null,
       stimulus_type: 'letter',
     });
 
     stimulusTimeoutRef.current = setTimeout(() => {
-      if (phaseRef.current === 'stimulus') {
-        handleNoResponse();
-      }
+      if (phaseRef.current === 'stimulus') handleNoResponse();
     }, NBACK_CONFIG.stimulusDuration);
   };
 
@@ -287,6 +305,8 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         setCurrentLevelIndex(nextLevel);
         setDisplayLetter('');
         isRunningRef.current = false;
+        setFeedback(null);
+        setReminderVisible(false);
       }, 2000);
     } else {
       finishBlock();
@@ -372,17 +392,18 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
             {getInstructionText(displayLevel)}
             <div className="instruction-details">
               <p>◉ Отвечайте как можно быстрее, но правильно</p>
-              <p>◉ <span className="instruction-right">Стрелка вправо →</span> – буква совпадает</p>
-              <p>◉ <span className="instruction-left">Стрелка влево ←</span> – буква НЕ совпадает</p>
+              <p>◉ <span className="instruction-right">Стрелка вправо →</span> – буква совпадает (ДА)</p>
+              <p>◉ <span className="instruction-left">Стрелка влево ←</span> – буква НЕ совпадает (НЕТ)</p>
+              <p>◉ Используйте <strong>клавиши со стрелками на клавиатуре</strong>.</p>
             </div>
             <div className="instruction-keys">
               <div className="key-group">
                 <span className="key key-left">←</span>
-                <span className="key-label instruction-left">Стрелка влево (не совпадает)</span>
+                <span className="key-label instruction-left">Стрелка влево (НЕТ)</span>
               </div>
               <div className="key-group">
                 <span className="key key-right">→</span>
-                <span className="key-label instruction-right">Стрелка вправо (совпадает)</span>
+                <span className="key-label instruction-right">Стрелка вправо (ДА)</span>
               </div>
             </div>
             {showFullscreenPrompt && !isFullscreen && (
@@ -416,6 +437,14 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
         {displayPhase === 'stimulus' && (
           <div className="nback-stimulus">
             <div className="stimulus-letter">{displayLetter}</div>
+            {reminderVisible && (
+              <div className="reminder-hint">← НЕТ &nbsp;&nbsp;|&nbsp;&nbsp; ДА →</div>
+            )}
+            {feedback && (
+              <div className={`feedback-overlay ${feedback.isCorrect ? 'correct' : 'incorrect'}`}>
+                {feedback.isCorrect ? '✓ Правильно' : '✗ Неправильно'}
+              </div>
+            )}
           </div>
         )}
         {displayPhase === 'fixation' && (
