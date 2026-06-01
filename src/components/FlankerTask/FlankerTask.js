@@ -343,11 +343,11 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
           <div className="instruction-keys">
             <div className="key-group">
               <span className="key key-left">←</span>
-              <span className="key-label instruction-left">Стрелка влево (НЕТ)</span>
+              <span className="key-label instruction-left">Стрелка влево</span>
             </div>
             <div className="key-group">
               <span className="key key-right">→</span>
-              <span className="key-label instruction-right">Стрелка вправо (ДА)</span>
+              <span className="key-label instruction-right">Стрелка вправо</span>
             </div>
           </div>
           {showFullscreenPrompt && !isFullscreen && (
