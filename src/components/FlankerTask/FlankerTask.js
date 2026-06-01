@@ -385,7 +385,7 @@ const FlankerTask = ({ blockId, participantId, onBlockComplete }) => {
         <div className="flanker-stimulus">
           <div className="stimulus">{currentStimulus}</div>
           {reminderVisible && (
-            <div className="reminder-hint">← НЕТ &nbsp;&nbsp;|&nbsp;&nbsp; ДА →</div>
+            <div className="reminder-hint">← Стрелка влево &nbsp;&nbsp;|&nbsp;&nbsp; стрелка вправо →</div>
           )}
           {feedback && (
             <div className={`feedback-overlay ${feedback.isCorrect ? 'correct' : 'incorrect'}`}>
