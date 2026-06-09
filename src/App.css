@@ -865,3 +865,109 @@ button:not(:disabled):hover {
 .final-wrapper .experiment-controls {
   margin-bottom: 20px;
 }
+
+.app-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.experiment-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 10px 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.experiment-progress .progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.experiment-progress .progress-fill {
+  height: 100%;
+  background-color: #4caf50;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  margin: 5px 0 0;
+  font-size: 14px;
+  color: #555;
+  text-align: center;
+}
+
+.completion-message {
+  text-align: center;
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.completion-message h2 {
+  color: #4caf50;
+  margin-bottom: 1rem;
+}
+
+/* Стили для собственной формы (если Registration почему-то не используется — можно удалить) */
+.registration-form {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+}
+
+.registration-field {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.registration-field label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.registration-field input {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.start-btn {
+  padding: 0.8rem 2rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+.start-btn:hover {
+  background-color: #45a049;
+}

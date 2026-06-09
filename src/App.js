@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import InformedConsentPopup from './components/InformedConsentPopup/InformedConsentPopup';
+import Registration from './components/Registration/Registration';
 import FlankerTask from './components/FlankerTask/FlankerTask';
 import NBackTask from './components/NBackTask/NBackTask';
 import GoNoGoTask from './components/GoNoGoTask/GoNoGoTask';
@@ -20,11 +21,10 @@ const generateParticipantId = () => {
 const App = () => {
   const [consentGiven, setConsentGiven] = useState(false);
   const [participantId, setParticipantId] = useState(null);
-  const [currentStage, setCurrentStage] = useState(0); //
+  const [currentStage, setCurrentStage] = useState(0);
   const [experimentCompleted, setExperimentCompleted] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [registrationError, setRegistrationError] = useState('');
-  const [customParticipantId, setCustomParticipantId] = useState('');
+  const [registrationData, setRegistrationData] = useState(null);
 
   useEffect(() => {
     const savedConsent = localStorage.getItem('informedConsent');
@@ -55,16 +55,20 @@ const App = () => {
     setExperimentCompleted(true);
   };
 
-  const handleRegister = () => {
-    let finalId = customParticipantId.trim();
+  const handleRegistrationSubmit = async (data) => {
+    let finalId = data.id.trim();
     if (!finalId) {
       finalId = generateParticipantId();
     }
     if (!/^[a-zA-Z0-9_\-]{1,50}$/.test(finalId)) {
-      setRegistrationError('ID может содержать только буквы, цифры, дефис и подчёркивание (1-50 символов)');
-      return;
+      throw new Error('ID может содержать только буквы, цифры, дефис и подчёркивание (1-50 символов)');
     }
     setParticipantId(finalId);
+    setRegistrationData({
+      participantId: finalId,
+      sessionNumber: data.sessionNumber,
+      fatigueRating: data.fatigue_rating
+    });
     localStorage.setItem('participantId', finalId);
     localStorage.setItem('currentStage', '0');
     setShowRegistration(false);
@@ -98,30 +102,7 @@ const App = () => {
   }
 
   if (showRegistration) {
-    return (
-      <div className="app-container">
-        <div className="registration-form">
-          <h2>Регистрация участника</h2>
-          <p>
-            Пожалуйста, введите ваш идентификатор (можно псевдоним) или оставьте поле пустым для автоматической генерации.
-          </p>
-          <div className="registration-field">
-            <label>Ваш ID:</label>
-            <input
-              type="text"
-              value={customParticipantId}
-              onChange={(e) => setCustomParticipantId(e.target.value)}
-              placeholder="Например: Student_2025"
-              autoFocus
-            />
-          </div>
-          {registrationError && <div className="error-message">{registrationError}</div>}
-          <button className="start-btn" onClick={handleRegister}>
-            Начать эксперимент
-          </button>
-        </div>
-      </div>
-    );
+    return <Registration onSubmit={handleRegistrationSubmit} />;
   }
 
   const CurrentComponent = STAGES[currentStage].component;
