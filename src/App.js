@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import InformedConsentPopup from './components/InformedConsentPopup';
+import InformedConsentPopup from './components/InformedConsentPopup/InformedConsentPopup';
 import FlankerTask from './components/FlankerTask';
 import NBackTask from './components/NBackTask';
 import GoNoGoTask from './components/GoNoGoTask';
