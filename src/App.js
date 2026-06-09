@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import InformedConsentPopup from './components/InformedConsentPopup/InformedConsentPopup';
-import FlankerTask from './components/FlankerTask';
-import NBackTask from './components/NBackTask';
-import GoNoGoTask from './components/GoNoGoTask';
-import PostExperimentQuestionnaire from './components/PostExperimentQuestionnaire';
+import FlankerTask from './components/FlankerTask/FlankerTask';
+import NBackTask from './components/NBackTask/NBackTask';
+import GoNoGoTask from './components/GoNoGoTask/GoNoGoTask';
+import PostExperimentQuestionnaire from './components/PostExperimentQuestionnaire/PostExperimentQuestionnaire';
 
 const STAGES = [
   { id: 'flanker', title: 'Тест 1: Фланкер', component: FlankerTask },
