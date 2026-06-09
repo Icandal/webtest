@@ -1,0 +1,127 @@
+.consent-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(3px);
+}
+
+.consent-modal {
+  background-color: white;
+  max-width: 700px;
+  width: 90%;
+  max-height: 85vh;
+  border-radius: 16px;
+  box-shadow: 0 20px 35px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.consent-modal h2 {
+  background-color: #4caf50;
+  color: white;
+  margin: 0;
+  padding: 20px 24px;
+  font-size: 1.6rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.consent-text {
+  padding: 24px;
+  overflow-y: auto;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+.consent-text p {
+  margin-bottom: 16px;
+  text-align: justify;
+}
+
+.consent-text p:last-child {
+  margin-bottom: 0;
+}
+
+.consent-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 20px 24px;
+  background-color: #f9f9f9;
+  border-top: 1px solid #eee;
+}
+
+.consent-btn {
+  padding: 10px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.consent-btn.agree {
+  background-color: #4caf50;
+  color: white;
+}
+
+.consent-btn.agree:hover {
+  background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.consent-btn.decline {
+  background-color: #f44336;
+  color: white;
+}
+
+.consent-btn.decline:hover {
+  background-color: #d32f2f;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 600px) {
+  .consent-modal {
+    width: 95%;
+  }
+  .consent-modal h2 {
+    font-size: 1.3rem;
+    padding: 16px;
+  }
+  .consent-text {
+    padding: 16px;
+    font-size: 0.9rem;
+  }
+  .consent-buttons {
+    padding: 16px;
+  }
+  .consent-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+}

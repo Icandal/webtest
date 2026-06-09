@@ -1,204 +1,150 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import Registration from './components/Registration/Registration';
-import ExperimentFlow from './components/ExperimentFlow/ExperimentFlow';
-import FinalPage from './components/FinalPage/FinalPage';
+import InformedConsentPopup from './components/InformedConsentPopup';
+import FlankerTask from './components/FlankerTask';
+import NBackTask from './components/NBackTask';
+import GoNoGoTask from './components/GoNoGoTask';
+import PostExperimentQuestionnaire from './components/PostExperimentQuestionnaire';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const STAGES = [
+  { id: 'flanker', title: 'Тест 1: Фланкер', component: FlankerTask },
+  { id: 'nback', title: 'Тест 2: N-назад', component: NBackTask },
+  { id: 'gonogo', title: 'Тесты 3-5: Go/No-Go', component: GoNoGoTask },
+  { id: 'questionnaire', title: 'Опросник', component: PostExperimentQuestionnaire },
+];
+
+const generateParticipantId = () => {
+  return 'P_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+};
 
 const App = () => {
-  const [backendStatus, setBackendStatus] = useState('Проверка...');
-  const [currentView, setCurrentView] = useState('registration');
-  const [participantData, setParticipantData] = useState(null);
-  const [experimentData, setExperimentData] = useState(null);
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [participantId, setParticipantId] = useState(null);
+  const [currentStage, setCurrentStage] = useState(0);
+  const [experimentCompleted, setExperimentCompleted] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [registrationError, setRegistrationError] = useState('');
+  const [customParticipantId, setCustomParticipantId] = useState('');
 
   useEffect(() => {
-    checkBackendConnection();
-    checkSavedSession();
-  }, []);
-
-  const checkBackendConnection = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/health/`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        mode: 'cors'
-      });
-      if (response.ok) {
-        setBackendStatus('✅ Сервер доступен');
+    const savedConsent = localStorage.getItem('informedConsent');
+    if (savedConsent === 'true') {
+      setConsentGiven(true);
+      const savedParticipantId = localStorage.getItem('participantId');
+      if (savedParticipantId) {
+        setParticipantId(savedParticipantId);
+        const savedStage = localStorage.getItem('currentStage');
+        if (savedStage !== null && !experimentCompleted) {
+          setCurrentStage(parseInt(savedStage, 10));
+        }
       } else {
-        setBackendStatus('⚠️ Сервер отвечает с ошибкой');
-      }
-    } catch (error) {
-      setBackendStatus('❌ Сервер недоступен');
-    }
-  };
-
-  const checkSavedSession = () => {
-    const savedParticipantId = localStorage.getItem('participant_id');
-    const savedId = localStorage.getItem('participant_db_id');
-    const savedSession = localStorage.getItem('session_number');
-
-    if (savedParticipantId && savedSession) {
-      const shouldRestore = window.confirm(
-        `Найдена предыдущая сессия:\nУчастник: ${savedParticipantId}, Сессия: ${savedSession}\n\nПродолжить эту сессию?`
-      );
-      if (shouldRestore) {
-        setParticipantData({
-          id: savedId || savedParticipantId,
-          participant_id: savedParticipantId,
-          session_number: savedSession
-        });
-        setCurrentView('experiment');
-      } else {
-        localStorage.clear();
+        setShowRegistration(true);
       }
     }
-    setIsCheckingSession(false);
+  }, [experimentCompleted]);
+
+  const handleConsent = () => {
+    localStorage.setItem('informedConsent', 'true');
+    setConsentGiven(true);
+    setShowRegistration(true);
   };
 
-  const handleRegistrationSubmit = async (formData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/register/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          participant_id: formData.id,
-          session_number: formData.sessionNumber,
-        })
-      });
+  const handleDecline = () => {
+    localStorage.removeItem('informedConsent');
+    setConsentGiven(false);
+    setExperimentCompleted(true);
+  };
 
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('participant_id', formData.id);
-        localStorage.setItem('participant_db_id', data.participant_id);
-        localStorage.setItem('session_number', formData.sessionNumber);
-        localStorage.setItem('session_token', data.session_token);
-
-        setParticipantData({
-          id: data.participant_id,
-          participant_id: formData.id,
-          session_number: formData.sessionNumber,
-          session_token: data.session_token
-        });
-        setCurrentView('experiment');
-      } else {
-        showMessage(`Ошибка регистрации: ${response.status}`, 'error');
-      }
-    } catch (error) {
-      showMessage(`Ошибка соединения: ${error.message}`, 'error');
+  const handleRegister = () => {
+    let finalId = customParticipantId.trim();
+    if (!finalId) {
+      finalId = generateParticipantId();
     }
-  };
-
-  const handleExperimentComplete = (data) => {
-    setExperimentData(data);
-    setCurrentView('final');
-  };
-
-  const handleFinalPageSubmit = async (finalData) => {
-    setIsSubmittingFeedback(true);
-    try {
-      // Здесь можно отправить данные опросника, если необходимо
-      showMessage('Результаты успешно сохранены!', 'success');
-    } catch (error) {
-      showMessage('Произошла ошибка при завершении', 'error');
-    } finally {
-      localStorage.removeItem('participant_db_id');
-      localStorage.removeItem('session_number');
-      localStorage.removeItem('session_token');
-      setTimeout(() => {
-        setIsSubmittingFeedback(false);
-        setParticipantData(null);
-        setExperimentData(null);
-        setCurrentView('registration');
-      }, 2000);
+    if (!/^[a-zA-Z0-9_\-]{1,50}$/.test(finalId)) {
+      setRegistrationError('ID может содержать только буквы, цифры, дефис и подчёркивание (1-50 символов)');
+      return;
     }
+    setParticipantId(finalId);
+    localStorage.setItem('participantId', finalId);
+    localStorage.setItem('currentStage', '0');
+    setShowRegistration(false);
+    setCurrentStage(0);
   };
 
-  const showMessage = (message, type) => {
-    setSuccessMessage(message);
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
-  };
-
-  const handleRestart = () => {
-    if (window.confirm('Вы уверены, что хотите начать заново?')) {
-      localStorage.clear();
-      setParticipantData(null);
-      setExperimentData(null);
-      setCurrentView('registration');
-      checkBackendConnection();
-      showMessage('Эксперимент сброшен. Начните новую сессию.', 'info');
+  const handleBlockComplete = useCallback((result) => {
+    const nextStage = currentStage + 1;
+    if (nextStage < STAGES.length) {
+      setCurrentStage(nextStage);
+      localStorage.setItem('currentStage', nextStage.toString());
+    } else {
+      setExperimentCompleted(true);
+      localStorage.removeItem('currentStage');
     }
-  };
+  }, [currentStage]);
 
-  const renderContent = () => {
-    if (isCheckingSession) {
-      return (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Проверка сохраненной сессии...</p>
+  if (experimentCompleted) {
+    return (
+      <div className="app-container">
+        <div className="completion-message">
+          <h2>Благодарим за участие!</h2>
+          <p>Ваши ответы сохранены. Вы можете закрыть окно браузера.</p>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    switch (currentView) {
-      case 'registration':
-        return <Registration onSubmit={handleRegistrationSubmit} />;
-      case 'experiment':
-        return (
-          <div className="experiment-wrapper">
-            <div className="experiment-controls">
-              <button className="restart-btn" onClick={handleRestart}>↻ Начать заново</button>
-              <div className="participant-info">
-                Участник: {participantData?.participant_id} | Сессия: {participantData?.session_number}
-              </div>
-            </div>
-            <ExperimentFlow
-              participantData={participantData}
-              onExperimentComplete={handleExperimentComplete}
+  if (!consentGiven) {
+    return <InformedConsentPopup onConsent={handleConsent} onDecline={handleDecline} />;
+  }
+
+  if (showRegistration) {
+    return (
+      <div className="app-container">
+        <div className="registration-form">
+          <h2>Регистрация участника</h2>
+          <p>
+            Пожалуйста, введите ваш идентификатор (можно псевдоним) или оставьте поле пустым для автоматической генерации.
+          </p>
+          <div className="registration-field">
+            <label>Ваш ID:</label>
+            <input
+              type="text"
+              value={customParticipantId}
+              onChange={(e) => setCustomParticipantId(e.target.value)}
+              placeholder="Например: Student_2025"
+              autoFocus
             />
           </div>
-        );
-      case 'final':
-        return (
-          <div className="final-wrapper">
-            <FinalPage
-              onSubmit={handleFinalPageSubmit}
-              isSubmitting={isSubmittingFeedback}
-            />
-          </div>
-        );
-      default:
-        return <Registration onSubmit={handleRegistrationSubmit} />;
-    }
-  };
+          {registrationError && <div className="error-message">{registrationError}</div>}
+          <button className="start-btn" onClick={handleRegister}>
+            Начать эксперимент
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const CurrentComponent = STAGES[currentStage].component;
+  const blockId = `${participantId}_${STAGES[currentStage].id}_${Date.now()}`;
 
   return (
-    <div className="App">
-      {currentView === 'registration' && !isCheckingSession && (
-        <header className="App-header">
-          <div className="status-info">
-            <span className={`status-indicator ${backendStatus.includes('✅') ? 'online' : backendStatus.includes('⚠️') ? 'warning' : 'offline'}`}>●</span>
-            {backendStatus}
-            <button className="refresh-btn" onClick={checkBackendConnection} title="Проверить соединение">⟳</button>
-          </div>
-        </header>
-      )}
-
-      {showSuccessMessage && (
-        <div className={`success-message ${successMessage.includes('Ошибка') ? 'error' : 'success'}`}>
-          {successMessage}
+    <div className="app-container">
+      <div className="experiment-progress">
+        <div className="progress-bar">
+          <div
+            className="progress-fill"
+            style={{ width: `${((currentStage + 1) / STAGES.length) * 100}%` }}
+          />
         </div>
-      )}
-
-      <main className={`main-content ${currentView !== 'registration' ? 'full-height' : ''}`}>
-        {renderContent()}
-      </main>
+        <p className="progress-text">
+          Этап {currentStage + 1} из {STAGES.length}: {STAGES[currentStage].title}
+        </p>
+      </div>
+      <CurrentComponent
+        blockId={blockId}
+        participantId={participantId}
+        onBlockComplete={handleBlockComplete}
+      />
     </div>
   );
 };

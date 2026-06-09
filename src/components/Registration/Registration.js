@@ -7,6 +7,7 @@ const Registration = ({ onSubmit }) => {
     sessionNumber: '1',
   });
 
+  const [fatigueRating, setFatigueRating] = useState(50);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,6 +26,10 @@ const Registration = ({ onSubmit }) => {
     }
   };
 
+  const handleFatigueChange = (e) => {
+    setFatigueRating(parseInt(e.target.value, 10));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -41,7 +46,10 @@ const Registration = ({ onSubmit }) => {
 
     try {
       if (onSubmit) {
-        await onSubmit(formData);
+        await onSubmit({
+          ...formData,
+          fatigue_rating: fatigueRating,
+        });
       }
     } finally {
       setIsLoading(false);
@@ -95,6 +103,35 @@ const Registration = ({ onSubmit }) => {
             )}
             <div className="form-hint">
               Номер экспериментальной сессии (от 1 до 10)
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Насколько вы чувствуете себя уставшим?</label>
+            <div className="slider-container">
+              <div className="slider-labels-multi">
+                <span>Совсем не устал</span>
+                <span>Немного устал</span>
+                <span>Умеренно</span>
+                <span>Сильно устал</span>
+                <span>Очень сильно устал</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={fatigueRating}
+                onChange={handleFatigueChange}
+                className="slider"
+                disabled={isLoading}
+              />
+              <div className="current-value-label">
+                {fatigueRating <= 20 && "Совсем не устал"}
+                {fatigueRating > 20 && fatigueRating <= 40 && "Немного устал"}
+                {fatigueRating > 40 && fatigueRating <= 60 && "Умеренно"}
+                {fatigueRating > 60 && fatigueRating <= 80 && "Сильно устал"}
+                {fatigueRating > 80 && "Очень сильно устал"}
+              </div>
             </div>
           </div>
 
