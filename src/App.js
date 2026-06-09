@@ -20,7 +20,7 @@ const generateParticipantId = () => {
 const App = () => {
   const [consentGiven, setConsentGiven] = useState(false);
   const [participantId, setParticipantId] = useState(null);
-  const [currentStage, setCurrentStage] = useState(0);
+  const [currentStage, setCurrentStage] = useState(0); //
   const [experimentCompleted, setExperimentCompleted] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [registrationError, setRegistrationError] = useState('');
