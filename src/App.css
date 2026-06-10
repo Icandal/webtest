@@ -32,8 +32,8 @@ body {
   top: 16px;
   right: 16px;
   z-index: 9999;
-  background-color: #ff6b6b;
-  color: white;
+  background-color: #ffffff;
+  color: rgb(0, 0, 0);
   border: none;
   border-radius: 30px;
   padding: 8px 16px;
@@ -48,7 +48,7 @@ body {
 }
 
 .reset-experiment-btn:hover {
-  background-color: #ff5252;
+  background-color: #ffffff;
   transform: scale(1.02);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
