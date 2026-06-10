@@ -11,11 +11,14 @@ const App = () => {
   const [experimentStarted, setExperimentStarted] = useState(false);
 
   useEffect(() => {
+    console.log('App mounted, checking localStorage');
     const savedConsent = localStorage.getItem('informedConsent');
+    console.log('savedConsent:', savedConsent);
     if (savedConsent === 'true') {
       setConsentGiven(true);
       const savedParticipantId = localStorage.getItem('participantId');
       const savedSessionNumber = localStorage.getItem('sessionNumber');
+      console.log('savedParticipantId:', savedParticipantId, 'savedSessionNumber:', savedSessionNumber);
       if (savedParticipantId && savedSessionNumber) {
         setParticipantData({
           id: savedParticipantId,
@@ -29,21 +32,22 @@ const App = () => {
   }, []);
 
   const handleConsent = () => {
+    console.log('handleConsent called');
     localStorage.setItem('informedConsent', 'true');
     setConsentGiven(true);
     setShowRegistration(true);
   };
 
   const handleDecline = () => {
+    console.log('handleDecline called');
     localStorage.removeItem('informedConsent');
     setConsentGiven(false);
-    // Показываем сообщение об отказе
     alert('Вы отказались от участия. Страница будет перезагружена.');
     window.location.reload();
   };
 
   const handleRegistrationSubmit = async (data) => {
-    // data содержит { id, sessionNumber, fatigue_rating }
+    console.log('Registration submitted:', data);
     setParticipantData({
       id: data.id,
       session_number: data.sessionNumber,
@@ -55,15 +59,20 @@ const App = () => {
     setExperimentStarted(true);
   };
 
+  console.log('Render: consentGiven=', consentGiven, 'showRegistration=', showRegistration, 'experimentStarted=', experimentStarted);
+
   if (!consentGiven) {
+    console.log('Rendering InformedConsentPopup');
     return <InformedConsentPopup onConsent={handleConsent} onDecline={handleDecline} />;
   }
 
   if (showRegistration) {
+    console.log('Rendering Registration');
     return <Registration onSubmit={handleRegistrationSubmit} />;
   }
 
   if (experimentStarted && participantData) {
+    console.log('Rendering ExperimentFlow');
     return (
       <ExperimentFlow
         participantData={participantData}
@@ -72,13 +81,13 @@ const App = () => {
           localStorage.removeItem('currentStage');
           localStorage.removeItem('participantId');
           localStorage.removeItem('sessionNumber');
-          // Можно показать финальное сообщение
           alert('Спасибо за участие! Эксперимент окончен.');
         }}
       />
     );
   }
 
+  console.log('Returning null');
   return null;
 };
 
