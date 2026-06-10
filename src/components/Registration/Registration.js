@@ -6,24 +6,14 @@ const Registration = ({ onSubmit }) => {
     id: '',
     sessionNumber: '1',
   });
-
   const [fatigueRating, setFatigueRating] = useState(50);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handleFatigueChange = (e) => {
@@ -32,10 +22,11 @@ const Registration = ({ onSubmit }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const newErrors = {};
     if (!formData.id.trim()) newErrors.id = 'Введите ID участника';
     if (!formData.sessionNumber.trim()) newErrors.sessionNumber = 'Введите номер сессии';
+    const sessionNum = parseInt(formData.sessionNumber, 10);
+    if (sessionNum < 1 || sessionNum > 10) newErrors.sessionNumber = 'Номер сессии должен быть от 1 до 10';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -43,14 +34,16 @@ const Registration = ({ onSubmit }) => {
     }
 
     setIsLoading(true);
-
     try {
       if (onSubmit) {
         await onSubmit({
-          ...formData,
+          id: formData.id.trim(),
+          sessionNumber: formData.sessionNumber,
           fatigue_rating: fatigueRating,
         });
       }
+    } catch (error) {
+      console.error('Registration error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -64,9 +57,7 @@ const Registration = ({ onSubmit }) => {
 
         <form onSubmit={handleSubmit} className="registration-form">
           <div className="form-group">
-            <label htmlFor="id" className="form-label">
-              ID участника *
-            </label>
+            <label htmlFor="id" className="form-label">ID участника *</label>
             <input
               type="text"
               id="id"
@@ -78,15 +69,11 @@ const Registration = ({ onSubmit }) => {
               disabled={isLoading}
             />
             {errors.id && <span className="error-message">{errors.id}</span>}
-            <div className="form-hint">
-              Уникальный идентификатор участника
-            </div>
+            <div className="form-hint">Уникальный идентификатор участника</div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="sessionNumber" className="form-label">
-              Номер сессии *
-            </label>
+            <label htmlFor="sessionNumber" className="form-label">Номер сессии *</label>
             <input
               type="number"
               id="sessionNumber"
@@ -98,12 +85,8 @@ const Registration = ({ onSubmit }) => {
               max="10"
               disabled={isLoading}
             />
-            {errors.sessionNumber && (
-              <span className="error-message">{errors.sessionNumber}</span>
-            )}
-            <div className="form-hint">
-              Номер экспериментальной сессии (от 1 до 10)
-            </div>
+            {errors.sessionNumber && <span className="error-message">{errors.sessionNumber}</span>}
+            <div className="form-hint">Номер экспериментальной сессии (от 1 до 10)</div>
           </div>
 
           <div className="form-group">
@@ -152,7 +135,7 @@ const Registration = ({ onSubmit }) => {
 
           <div className="form-footer">
             <p className="footer-note">
-              Нажимая "Начать эксперимент", вы соглашаетесь на участие в исследовании
+              Нажимая "Начать эксперимент", вы подтверждаете своё участие в исследовании
             </p>
           </div>
         </form>
