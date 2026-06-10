@@ -10,14 +10,7 @@ body {
   background-color: #f0f0f0;
 }
 
-.app-container {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
+/* Этот класс может использоваться для финального сообщения, если нужно */
 .completion-message {
   text-align: center;
   background-color: white;
@@ -25,6 +18,7 @@ body {
   border-radius: 12px;
   max-width: 500px;
   width: 90%;
+  margin: 100px auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
