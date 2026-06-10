@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import InformedConsentPopup from './components/InformedConsentPopup/InformedConsentPopup';
-import Registration from './components/Registration/Registration';
 import FlankerTask from './components/FlankerTask/FlankerTask';
 import NBackTask from './components/NBackTask/NBackTask';
 import GoNoGoTask from './components/GoNoGoTask/GoNoGoTask';
@@ -24,10 +23,19 @@ const App = () => {
   const [currentStage, setCurrentStage] = useState(0);
   const [experimentCompleted, setExperimentCompleted] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [registrationData, setRegistrationData] = useState(null);
+  const [registrationError, setRegistrationError] = useState('');
+  const [isSavingRegistration, setIsSavingRegistration] = useState(false);
+
+  const [customParticipantId, setCustomParticipantId] = useState('');
+  const [sessionNumber, setSessionNumber] = useState('1');
+  const [fatigueRating, setFatigueRating] = useState(50);
 
   useEffect(() => {
+    // Очистка localStorage для тестирования (можно закомментировать после отладки)
+    // localStorage.clear();
+    
     const savedConsent = localStorage.getItem('informedConsent');
+    console.log('savedConsent:', savedConsent);
     if (savedConsent === 'true') {
       setConsentGiven(true);
       const savedParticipantId = localStorage.getItem('participantId');
@@ -44,31 +52,47 @@ const App = () => {
   }, [experimentCompleted]);
 
   const handleConsent = () => {
+    console.log('handleConsent called');
     localStorage.setItem('informedConsent', 'true');
     setConsentGiven(true);
     setShowRegistration(true);
   };
 
   const handleDecline = () => {
+    console.log('handleDecline called');
     localStorage.removeItem('informedConsent');
     setConsentGiven(false);
     setExperimentCompleted(true);
   };
 
-  const handleRegistrationSubmit = async (data) => {
-    let finalId = data.id.trim();
+  const handleRegister = async () => {
+    let finalId = customParticipantId.trim();
     if (!finalId) {
       finalId = generateParticipantId();
     }
     if (!/^[a-zA-Z0-9_\-]{1,50}$/.test(finalId)) {
-      throw new Error('ID может содержать только буквы, цифры, дефис и подчёркивание (1-50 символов)');
+      setRegistrationError('ID может содержать только буквы, цифры, дефис и подчёркивание (1-50 символов)');
+      return;
     }
+    const sessionNum = parseInt(sessionNumber, 10);
+    if (isNaN(sessionNum) || sessionNum < 1 || sessionNum > 10) {
+      setRegistrationError('Номер сессии должен быть от 1 до 10');
+      return;
+    }
+
+    setRegistrationError('');
+    setIsSavingRegistration(true);
+
+    try {
+      // здесь можно отправить данные на сервер
+      console.log('Registration data:', { finalId, sessionNum, fatigueRating });
+    } catch (error) {
+      console.error('Ошибка сохранения регистрации:', error);
+    } finally {
+      setIsSavingRegistration(false);
+    }
+
     setParticipantId(finalId);
-    setRegistrationData({
-      participantId: finalId,
-      sessionNumber: data.sessionNumber,
-      fatigueRating: data.fatigue_rating
-    });
     localStorage.setItem('participantId', finalId);
     localStorage.setItem('currentStage', '0');
     setShowRegistration(false);
@@ -86,6 +110,9 @@ const App = () => {
     }
   }, [currentStage]);
 
+  // Отладка: выводим текущие состояния
+  console.log('Render: consentGiven=', consentGiven, 'showRegistration=', showRegistration, 'participantId=', participantId, 'experimentCompleted=', experimentCompleted);
+
   if (experimentCompleted) {
     return (
       <div className="app-container">
@@ -98,11 +125,84 @@ const App = () => {
   }
 
   if (!consentGiven) {
+    console.log('Rendering InformedConsentPopup');
     return <InformedConsentPopup onConsent={handleConsent} onDecline={handleDecline} />;
   }
 
   if (showRegistration) {
-    return <Registration onSubmit={handleRegistrationSubmit} />;
+    console.log('Rendering registration form');
+    return (
+      <div className="app-container">
+        <div className="registration-form">
+          <h2>Регистрация участника</h2>
+          <p>Пожалуйста, введите данные для начала эксперимента</p>
+
+          <div className="registration-field">
+            <label>ID участника (можно псевдоним, оставьте пустым для автогенерации)</label>
+            <input
+              type="text"
+              value={customParticipantId}
+              onChange={(e) => setCustomParticipantId(e.target.value)}
+              placeholder="Например: Student_2025"
+              disabled={isSavingRegistration}
+            />
+          </div>
+
+          <div className="registration-field">
+            <label>Номер сессии (1–10)</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={sessionNumber}
+              onChange={(e) => setSessionNumber(e.target.value)}
+              disabled={isSavingRegistration}
+            />
+          </div>
+
+          <div className="registration-field">
+            <label>Насколько вы чувствуете себя уставшим?</label>
+            <div className="slider-container">
+              <div className="slider-labels-multi">
+                <span>Совсем не устал</span>
+                <span>Немного устал</span>
+                <span>Умеренно</span>
+                <span>Сильно устал</span>
+                <span>Очень сильно устал</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={fatigueRating}
+                onChange={(e) => setFatigueRating(parseInt(e.target.value, 10))}
+                className="slider"
+                disabled={isSavingRegistration}
+              />
+              <div className="current-value-label">
+                {fatigueRating <= 20 && "Совсем не устал"}
+                {fatigueRating > 20 && fatigueRating <= 40 && "Немного устал"}
+                {fatigueRating > 40 && fatigueRating <= 60 && "Умеренно"}
+                {fatigueRating > 60 && fatigueRating <= 80 && "Сильно устал"}
+                {fatigueRating > 80 && "Очень сильно устал"}
+              </div>
+            </div>
+          </div>
+
+          {registrationError && <div className="error-message">{registrationError}</div>}
+          <button
+            className="start-btn"
+            onClick={handleRegister}
+            disabled={isSavingRegistration}
+          >
+            {isSavingRegistration ? 'Сохранение...' : 'Начать эксперимент'}
+          </button>
+          <div className="form-footer">
+            <p>Нажимая "Начать эксперимент", вы подтверждаете своё участие</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const CurrentComponent = STAGES[currentStage].component;
