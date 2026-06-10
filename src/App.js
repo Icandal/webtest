@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// App.js (исправленный)
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import InformedConsentPopup from './components/InformedConsentPopup/InformedConsentPopup';
 import FlankerTask from './components/FlankerTask/FlankerTask';
@@ -30,39 +31,42 @@ const App = () => {
   const [sessionNumber, setSessionNumber] = useState('1');
   const [fatigueRating, setFatigueRating] = useState(50);
 
+  // Загрузка сохранённых данных при старте
   useEffect(() => {
-    // Очистка localStorage для тестирования (можно закомментировать после отладки)
-    // localStorage.clear();
-    
     const savedConsent = localStorage.getItem('informedConsent');
-    console.log('savedConsent:', savedConsent);
     if (savedConsent === 'true') {
       setConsentGiven(true);
-      const savedParticipantId = localStorage.getItem('participantId');
-      if (savedParticipantId) {
-        setParticipantId(savedParticipantId);
+      const savedId = localStorage.getItem('participantId');
+      if (savedId) {
+        // Если ID есть – сразу переходим к этапам без регистрации
+        setParticipantId(savedId);
         const savedStage = localStorage.getItem('currentStage');
-        if (savedStage !== null && !experimentCompleted) {
+        if (savedStage !== null) {
           setCurrentStage(parseInt(savedStage, 10));
         }
       } else {
+        // Согласие есть, но ID нет – показываем регистрацию
         setShowRegistration(true);
       }
     }
-  }, [experimentCompleted]);
+  }, []);
 
   const handleConsent = () => {
-    console.log('handleConsent called');
     localStorage.setItem('informedConsent', 'true');
     setConsentGiven(true);
-    setShowRegistration(true);
+    setShowRegistration(true); // Всегда показываем регистрацию после согласия
   };
 
   const handleDecline = () => {
-    console.log('handleDecline called');
     localStorage.removeItem('informedConsent');
     setConsentGiven(false);
     setExperimentCompleted(true);
+  };
+
+  // Сброс всех данных (для отладки)
+  const handleResetData = () => {
+    localStorage.clear();
+    window.location.reload();
   };
 
   const handleRegister = async () => {
@@ -84,22 +88,38 @@ const App = () => {
     setIsSavingRegistration(true);
 
     try {
-      // здесь можно отправить данные на сервер
-      console.log('Registration data:', { finalId, sessionNum, fatigueRating });
+      // Отправка регистрационных данных на сервер
+      const response = await fetch('/api/participant/register/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_id: finalId,
+          session_number: sessionNum,
+          fatigue_rating: fatigueRating,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Ошибка сервера: ${response.status}`);
+      }
+      const result = await response.json();
+      console.log('Регистрация успешна:', result);
     } catch (error) {
-      console.error('Ошибка сохранения регистрации:', error);
-    } finally {
+      console.error('Ошибка при отправке регистрации:', error);
+      setRegistrationError('Не удалось сохранить данные на сервере. Проверьте соединение.');
       setIsSavingRegistration(false);
+      return;
     }
 
-    setParticipantId(finalId);
+    // Сохраняем в localStorage только после успешной отправки
     localStorage.setItem('participantId', finalId);
     localStorage.setItem('currentStage', '0');
+    setParticipantId(finalId);
     setShowRegistration(false);
     setCurrentStage(0);
+    setIsSavingRegistration(false);
   };
 
-  const handleBlockComplete = useCallback((result) => {
+  const handleBlockComplete = (result) => {
     const nextStage = currentStage + 1;
     if (nextStage < STAGES.length) {
       setCurrentStage(nextStage);
@@ -108,29 +128,28 @@ const App = () => {
       setExperimentCompleted(true);
       localStorage.removeItem('currentStage');
     }
-  }, [currentStage]);
+  };
 
-  // Отладка: выводим текущие состояния
-  console.log('Render: consentGiven=', consentGiven, 'showRegistration=', showRegistration, 'participantId=', participantId, 'experimentCompleted=', experimentCompleted);
-
+  // --- Отрисовка ---
   if (experimentCompleted) {
     return (
       <div className="app-container">
         <div className="completion-message">
           <h2>Благодарим за участие!</h2>
           <p>Ваши ответы сохранены. Вы можете закрыть окно браузера.</p>
+          <button className="restart-btn" onClick={handleResetData} style={{ marginTop: '20px' }}>
+            Начать заново (очистить данные)
+          </button>
         </div>
       </div>
     );
   }
 
   if (!consentGiven) {
-    console.log('Rendering InformedConsentPopup');
     return <InformedConsentPopup onConsent={handleConsent} onDecline={handleDecline} />;
   }
 
   if (showRegistration) {
-    console.log('Rendering registration form');
     return (
       <div className="app-container">
         <div className="registration-form">
@@ -138,7 +157,7 @@ const App = () => {
           <p>Пожалуйста, введите данные для начала эксперимента</p>
 
           <div className="registration-field">
-            <label>ID участника (можно псевдоним, оставьте пустым для автогенерации)</label>
+            <label>ID участника (псевдоним, оставьте пустым для автогенерации)</label>
             <input
               type="text"
               value={customParticipantId}
@@ -200,6 +219,13 @@ const App = () => {
           <div className="form-footer">
             <p>Нажимая "Начать эксперимент", вы подтверждаете своё участие</p>
           </div>
+          <button
+            className="restart-btn"
+            onClick={handleResetData}
+            style={{ marginTop: '15px', background: '#ff6b6b' }}
+          >
+            Сбросить все данные
+          </button>
         </div>
       </div>
     );
