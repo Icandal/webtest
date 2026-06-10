@@ -26,3 +26,39 @@ body {
   color: #4caf50;
   margin-bottom: 1rem;
 }
+/* Плавающая кнопка сброса эксперимента */
+.reset-experiment-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reset-experiment-btn:hover {
+  background-color: #ff5252;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 768px) {
+  .reset-experiment-btn {
+    top: 8px;
+    right: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

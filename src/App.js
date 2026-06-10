@@ -11,14 +11,11 @@ const App = () => {
   const [experimentStarted, setExperimentStarted] = useState(false);
 
   useEffect(() => {
-    console.log('App mounted, checking localStorage');
     const savedConsent = localStorage.getItem('informedConsent');
-    console.log('savedConsent:', savedConsent);
     if (savedConsent === 'true') {
       setConsentGiven(true);
       const savedParticipantId = localStorage.getItem('participantId');
       const savedSessionNumber = localStorage.getItem('sessionNumber');
-      console.log('savedParticipantId:', savedParticipantId, 'savedSessionNumber:', savedSessionNumber);
       if (savedParticipantId && savedSessionNumber) {
         setParticipantData({
           id: savedParticipantId,
@@ -32,14 +29,12 @@ const App = () => {
   }, []);
 
   const handleConsent = () => {
-    console.log('handleConsent called');
     localStorage.setItem('informedConsent', 'true');
     setConsentGiven(true);
     setShowRegistration(true);
   };
 
   const handleDecline = () => {
-    console.log('handleDecline called');
     localStorage.removeItem('informedConsent');
     setConsentGiven(false);
     alert('Вы отказались от участия. Страница будет перезагружена.');
@@ -47,7 +42,6 @@ const App = () => {
   };
 
   const handleRegistrationSubmit = async (data) => {
-    console.log('Registration submitted:', data);
     setParticipantData({
       id: data.id,
       session_number: data.sessionNumber,
@@ -59,36 +53,40 @@ const App = () => {
     setExperimentStarted(true);
   };
 
-  console.log('Render: consentGiven=', consentGiven, 'showRegistration=', showRegistration, 'experimentStarted=', experimentStarted);
+  const resetExperiment = () => {
+    if (window.confirm('Вы уверены, что хотите начать эксперимент заново? Все текущие данные будут удалены.')) {
+      localStorage.removeItem('informedConsent');
+      localStorage.removeItem('participantId');
+      localStorage.removeItem('sessionNumber');
+      localStorage.removeItem('currentStage');
+      window.location.reload();
+    }
+  };
 
-  if (!consentGiven) {
-    console.log('Rendering InformedConsentPopup');
-    return <InformedConsentPopup onConsent={handleConsent} onDecline={handleDecline} />;
-  }
+  // Отображаем кнопку сброса только когда эксперимент уже запущен
+  const showResetButton = experimentStarted || showRegistration || consentGiven;
 
-  if (showRegistration) {
-    console.log('Rendering Registration');
-    return <Registration onSubmit={handleRegistrationSubmit} />;
-  }
-
-  if (experimentStarted && participantData) {
-    console.log('Rendering ExperimentFlow');
-    return (
-      <ExperimentFlow
-        participantData={participantData}
-        onExperimentComplete={(result) => {
-          console.log('Эксперимент завершён', result);
-          localStorage.removeItem('currentStage');
-          localStorage.removeItem('participantId');
-          localStorage.removeItem('sessionNumber');
-          alert('Спасибо за участие! Эксперимент окончен.');
-        }}
-      />
-    );
-  }
-
-  console.log('Returning null');
-  return null;
+  return (
+    <>
+      {showResetButton && (
+        <button className="reset-experiment-btn" onClick={resetExperiment} title="Начать эксперимент заново">
+          🔄 Новый эксперимент
+        </button>
+      )}
+      {!consentGiven && <InformedConsentPopup onConsent={handleConsent} onDecline={handleDecline} />}
+      {consentGiven && showRegistration && <Registration onSubmit={handleRegistrationSubmit} />}
+      {experimentStarted && participantData && (
+        <ExperimentFlow
+          participantData={participantData}
+          onExperimentComplete={(result) => {
+            console.log('Эксперимент завершён', result);
+            alert('Спасибо за участие! Эксперимент окончен.');
+            localStorage.removeItem('currentStage');
+          }}
+        />
+      )}
+    </>
+  );
 };
 
 export default App;
