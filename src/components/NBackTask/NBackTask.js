@@ -412,8 +412,6 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
                   <p className="fullscreen-prompt-title">🔍 Рекомендуется полноэкранный режим</p>
                   <p className="fullscreen-prompt-text">Для лучшего погружения включите полноэкранный режим</p>
                   <div className="fullscreen-prompt-buttons">
-                    <button className="fullscreen-prompt-btn primary" onClick={enterFullscreen}>Включить полноэкранный режим</button>
-                    <button className="fullscreen-prompt-btn secondary" onClick={() => setShowFullscreenPrompt(false)}>Продолжить без полноэкранного режима</button>
                   </div>
                   <p className="fullscreen-prompt-hint">Или нажмите <strong>F11</strong> в любое время</p>
                 </div>
