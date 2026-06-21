@@ -5,6 +5,7 @@ const Registration = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
     id: '',
     sessionNumber: '1',
+    specialization: 'OTHER',
   });
   const [fatigueRating, setFatigueRating] = useState(50);
   const [errors, setErrors] = useState({});
@@ -27,6 +28,7 @@ const Registration = ({ onSubmit }) => {
     if (!formData.sessionNumber.trim()) newErrors.sessionNumber = 'Введите номер сессии';
     const sessionNum = parseInt(formData.sessionNumber, 10);
     if (sessionNum < 1 || sessionNum > 10) newErrors.sessionNumber = 'Номер сессии должен быть от 1 до 10';
+    if (!formData.specialization) newErrors.specialization = 'Выберите специализацию';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -40,6 +42,7 @@ const Registration = ({ onSubmit }) => {
           id: formData.id.trim(),
           sessionNumber: formData.sessionNumber,
           fatigue_rating: fatigueRating,
+          specialization: formData.specialization,
         });
       }
     } catch (error) {
@@ -90,6 +93,32 @@ const Registration = ({ onSubmit }) => {
           </div>
 
           <div className="form-group">
+            <label htmlFor="specialization" className="form-label">Направление подготовки / специализация *</label>
+            <select
+              id="specialization"
+              name="specialization"
+              value={formData.specialization}
+              onChange={handleChange}
+              className={`form-input ${errors.specialization ? 'error' : ''}`}
+              disabled={isLoading}
+            >
+              <option value="IT">Программирование / IT</option>
+              <option value="PSY">Психология</option>
+              <option value="BIO">Биология</option>
+              <option value="MED">Медицина</option>
+              <option value="ENG">Инженерия</option>
+              <option value="MATH">Математика</option>
+              <option value="PHY">Физика</option>
+              <option value="LING">Лингвистика</option>
+              <option value="ECO">Экономика</option>
+              <option value="DES">Дизайн</option>
+              <option value="OTHER">Другое</option>
+            </select>
+            {errors.specialization && <span className="error-message">{errors.specialization}</span>}
+            <div className="form-hint">Выберите ваше основное направление</div>
+          </div>
+
+          <div className="form-group">
             <label className="form-label">Насколько вы чувствуете себя уставшим?</label>
             <div className="slider-container">
               <div className="slider-labels-multi">
@@ -121,7 +150,7 @@ const Registration = ({ onSubmit }) => {
           <button
             type="submit"
             className={`submit-button ${isLoading ? 'loading' : ''}`}
-            disabled={isLoading || !formData.id.trim() || !formData.sessionNumber.trim()}
+            disabled={isLoading || !formData.id.trim() || !formData.sessionNumber.trim() || !formData.specialization}
           >
             {isLoading ? (
               <>

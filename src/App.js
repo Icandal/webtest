@@ -3,6 +3,7 @@ import './App.css';
 import InformedConsentPopup from './components/InformedConsentPopup/InformedConsentPopup';
 import Registration from './components/Registration/Registration';
 import ExperimentFlow from './components/ExperimentFlow/ExperimentFlow';
+import api from './utils/api';
 
 const App = () => {
   const [consentGiven, setConsentGiven] = useState(false);
@@ -42,15 +43,28 @@ const App = () => {
   };
 
   const handleRegistrationSubmit = async (data) => {
-    setParticipantData({
-      id: data.id,
-      session_number: data.sessionNumber,
-      fatigue_rating: data.fatigue_rating,
-    });
-    localStorage.setItem('participantId', data.id);
-    localStorage.setItem('sessionNumber', data.sessionNumber);
-    setShowRegistration(false);
-    setExperimentStarted(true);
+    try {
+      const response = await api.post('/participant/register/', {
+        participant_id: data.id,
+        session_number: data.sessionNumber,
+        fatigue_rating: data.fatigue_rating,
+        specialization: data.specialization,
+      });
+
+      setParticipantData({
+        id: data.id,
+        session_number: data.sessionNumber,
+        fatigue_rating: data.fatigue_rating,
+        specialization: data.specialization,
+      });
+      localStorage.setItem('participantId', data.id);
+      localStorage.setItem('sessionNumber', data.sessionNumber);
+      setShowRegistration(false);
+      setExperimentStarted(true);
+    } catch (error) {
+      console.error('Ошибка регистрации:', error);
+      alert('Не удалось зарегистрировать участника. Проверьте соединение с сервером или попробуйте другие ID/сессию.');
+    }
   };
 
   const resetExperiment = () => {
@@ -63,7 +77,6 @@ const App = () => {
     }
   };
 
-  // Отображаем кнопку сброса только когда эксперимент уже запущен
   const showResetButton = experimentStarted || showRegistration || consentGiven;
 
   return (
