@@ -3,7 +3,7 @@ import './App.css';
 import InformedConsentPopup from './components/InformedConsentPopup/InformedConsentPopup';
 import Registration from './components/Registration/Registration';
 import ExperimentFlow from './components/ExperimentFlow/ExperimentFlow';
-import api from './utils/api';
+import api from './components/utils/api';
 
 const App = () => {
   const [consentGiven, setConsentGiven] = useState(false);
