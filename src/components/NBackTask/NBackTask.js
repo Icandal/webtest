@@ -221,16 +221,17 @@ const NBackTask = ({ blockId, participantId, onBlockComplete }) => {
       if (code === 'Escape' && isFullscreen && displayPhase === 'instructions') {
         exitFullscreen();
       }
+      // Пробел используется ТОЛЬКО для старта на экране инструкций
       if (code === 'Space' || code === ' ') {
         e.preventDefault();
         if (displayPhase === 'instructions' && !isRunningRef.current) {
           isRunningRef.current = true;
           startExperiment();
-        } else if (displayPhase === 'stimulus' && !responseReceivedForCurrentTrial()) {
-          handleResponse('target');
         }
+        // Убрана регистрация ответа по пробелу во время стимула
         return;
       }
+      // Обработка ответов стрелками
       if (displayPhase === 'stimulus' && !responseReceivedForCurrentTrial()) {
         if (NBACK_KEYS.target.includes(code)) {
           e.preventDefault();
