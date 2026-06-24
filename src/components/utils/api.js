@@ -1,8 +1,5 @@
 import axios from 'axios';
 
-// Для продакшена используем URL с /api на конце,
-// для локальной разработки можно оставить localhost:8000/api
-// Переменная окружения REACT_APP_API_URL имеет наивысший приоритет
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://backendapitestappllm.onrender.com/api';
 
 const api = axios.create({
@@ -54,7 +51,6 @@ export const nbackApi = {
 };
 
 export const participantApi = {
-  // Существующий метод для базовой регистрации (без fatigue и specialization) – оставлен для совместимости
   register: async (participantId, sessionNumber) => {
     try {
       const response = await api.post('/register/', { participant_id: participantId, session_number: sessionNumber });
@@ -63,7 +59,6 @@ export const participantApi = {
       return { success: false, error: error.response?.data || error.message };
     }
   },
-  // НОВЫЙ МЕТОД для регистрации с полными данными (усталость и специализация)
   registerFull: async (participantId, sessionNumber, fatigueRating, specialization) => {
     try {
       const response = await api.post('/participant/register/', {
@@ -77,9 +72,17 @@ export const participantApi = {
       return { success: false, error: error.response?.data || error.message };
     }
   },
-  startSession: async (participantId) => {
+  // Изменён: принимает session_number и fatigue_rating
+  startSession: async (participantId, sessionNumber, fatigueRating = null) => {
     try {
-      const response = await api.post('/session/start/', { participant_id: participantId });
+      const payload = {
+        participant_id: participantId,
+        session_number: sessionNumber,
+      };
+      if (fatigueRating !== null) {
+        payload.fatigue_rating = fatigueRating;
+      }
+      const response = await api.post('/session/start/', payload);
       return { success: true, data: response.data };
     } catch (error) {
       return { success: false, error: error.response?.data || error.message };

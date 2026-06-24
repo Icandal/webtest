@@ -29,7 +29,12 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
       setLoading(true);
       setError(null);
       try {
-        const sessionResult = await participantApi.startSession(participantData.id);
+        // Передаём participant_id, session_number и fatigue_rating
+        const sessionResult = await participantApi.startSession(
+          participantData.id,
+          participantData.session_number,
+          participantData.fatigue_rating // теперь передаём
+        );
         if (sessionResult.success) {
           setExperimentSessionId(sessionResult.data.session_id);
           const blockResult = await participantApi.createBlock(
@@ -56,8 +61,9 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     if (!sessionInitialized && !loading) {
       initializeExperiment();
     }
-  }, [participantData.id, sessionInitialized, loading]);
+  }, [participantData.id, participantData.session_number, participantData.fatigue_rating, sessionInitialized, loading]);
 
+  // Остальной код без изменений...
   const handleFlankerComplete = async (blockData) => {
     setFlankerData(blockData);
     setFlankerCompleted(true);
@@ -187,7 +193,7 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
                 ? 'Go/No‑Go Task'
                 : 'Завершающий опросник'}
         </h2>
-        <p>Участник: {participantData.participant_id} | Сессия: {participantData.session_number}</p>
+        <p>Участник: {participantData.id} | Сессия: {participantData.session_number}</p>
       </div>
 
       {error && (

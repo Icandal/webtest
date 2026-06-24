@@ -40,20 +40,25 @@ const App = () => {
         fatigue_rating: data.fatigue_rating,
         specialization: data.specialization,
       });
-
-      setParticipantData({
-        id: data.id,
-        session_number: data.sessionNumber,
-        fatigue_rating: data.fatigue_rating,
-        specialization: data.specialization,
-      });
-
-      setShowRegistration(false);
-      setExperimentStarted(true);
     } catch (error) {
-      console.error('Ошибка регистрации:', error);
-      alert('Не удалось зарегистрировать участника. Проверьте соединение с сервером или попробуйте другие ID/сессию.');
+      if (error.response) {
+        console.warn('Ошибка регистрации (сервер):', error.response.status, error.response.data);
+      } else {
+        console.error('Ошибка соединения:', error);
+        alert('Не удалось связаться с сервером. Проверьте интернет-соединение.');
+        return;
+      }
     }
+
+    setParticipantData({
+      id: data.id,
+      session_number: data.sessionNumber,
+      fatigue_rating: data.fatigue_rating,
+      specialization: data.specialization,
+    });
+
+    setShowRegistration(false);
+    setExperimentStarted(true);
   };
 
   const resetExperiment = () => {
