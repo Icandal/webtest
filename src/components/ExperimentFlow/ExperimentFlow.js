@@ -29,11 +29,10 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
       setLoading(true);
       setError(null);
       try {
-        // Передаём participant_id, session_number и fatigue_rating
         const sessionResult = await participantApi.startSession(
           participantData.id,
           participantData.session_number,
-          participantData.fatigue_rating // теперь передаём
+          participantData.fatigue_rating
         );
         if (sessionResult.success) {
           setExperimentSessionId(sessionResult.data.session_id);
@@ -63,7 +62,6 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     }
   }, [participantData.id, participantData.session_number, participantData.fatigue_rating, sessionInitialized, loading]);
 
-  // Остальной код без изменений...
   const handleFlankerComplete = async (blockData) => {
     setFlankerData(blockData);
     setFlankerCompleted(true);

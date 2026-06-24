@@ -72,7 +72,6 @@ export const participantApi = {
       return { success: false, error: error.response?.data || error.message };
     }
   },
-  // Изменён: принимает session_number и fatigue_rating
   startSession: async (participantId, sessionNumber, fatigueRating = null) => {
     try {
       const payload = {
