@@ -15,17 +15,7 @@ const App = () => {
     const savedConsent = localStorage.getItem('informedConsent');
     if (savedConsent === 'true') {
       setConsentGiven(true);
-      const savedParticipantId = localStorage.getItem('participantId');
-      const savedSessionNumber = localStorage.getItem('sessionNumber');
-      if (savedParticipantId && savedSessionNumber) {
-        setParticipantData({
-          id: savedParticipantId,
-          session_number: savedSessionNumber,
-        });
-        setExperimentStarted(true);
-      } else {
-        setShowRegistration(true);
-      }
+      setShowRegistration(true);
     }
   }, []);
 
@@ -44,7 +34,7 @@ const App = () => {
 
   const handleRegistrationSubmit = async (data) => {
     try {
-      const response = await api.post('/participant/register/', {
+      await api.post('/participant/register/', {
         participant_id: data.id,
         session_number: data.sessionNumber,
         fatigue_rating: data.fatigue_rating,
@@ -57,8 +47,7 @@ const App = () => {
         fatigue_rating: data.fatigue_rating,
         specialization: data.specialization,
       });
-      localStorage.setItem('participantId', data.id);
-      localStorage.setItem('sessionNumber', data.sessionNumber);
+
       setShowRegistration(false);
       setExperimentStarted(true);
     } catch (error) {
