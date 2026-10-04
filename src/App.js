@@ -43,11 +43,13 @@ const App = () => {
     } catch (error) {
       if (error.response) {
         console.warn('Ошибка регистрации (сервер):', error.response.status, error.response.data);
+        alert('Ошибка регистрации. Проверьте введенные данные.');
       } else {
         console.error('Ошибка соединения:', error);
         alert('Не удалось связаться с сервером. Проверьте интернет-соединение.');
-        return;
       }
+      // ДОБАВЛЕН RETURN СЮДА! Это критически важно, чтобы не запускать эксперимент при ошибке.
+      return; 
     }
 
     setParticipantData({
