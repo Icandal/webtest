@@ -6,6 +6,8 @@ const Registration = ({ onSubmit }) => {
     id: '',
     sessionNumber: '1',
     specialization: 'OTHER',
+    isSchoolStudent: false,
+    schoolClass: '',
   });
   const [fatigueRating, setFatigueRating] = useState(50);
   const [errors, setErrors] = useState({});
@@ -15,6 +17,18 @@ const Registration = ({ onSubmit }) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleCheckboxChange = (e) => {
+    const { checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      isSchoolStudent: checked,
+      specialization: checked ? 'UNIV' : 'OTHER',
+      schoolClass: checked ? prev.schoolClass : ''
+    }));
+    if (errors.isSchoolStudent) setErrors(prev => ({ ...prev, isSchoolStudent: '' }));
+    if (!checked && errors.schoolClass) setErrors(prev => ({ ...prev, schoolClass: '' }));
   };
 
   const handleFatigueChange = (e) => {
@@ -29,6 +43,10 @@ const Registration = ({ onSubmit }) => {
     const sessionNum = parseInt(formData.sessionNumber, 10);
     if (sessionNum < 1 || sessionNum > 10) newErrors.sessionNumber = 'Номер сессии должен быть от 1 до 10';
     if (!formData.specialization) newErrors.specialization = 'Выберите специализацию';
+    
+    if (formData.isSchoolStudent && !formData.schoolClass.trim()) {
+      newErrors.schoolClass = 'Введите класс (например: 10А)';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -43,6 +61,8 @@ const Registration = ({ onSubmit }) => {
           sessionNumber: formData.sessionNumber,
           fatigue_rating: fatigueRating,
           specialization: formData.specialization,
+          is_school_student: formData.isSchoolStudent,
+          school_class: formData.schoolClass,
         });
       }
     } catch (error) {
@@ -92,6 +112,36 @@ const Registration = ({ onSubmit }) => {
             <div className="form-hint">Номер экспериментальной сессии (от 1 до 10)</div>
           </div>
 
+          <div className="form-group checkbox-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
+            <input
+              type="checkbox"
+              id="isSchoolStudent"
+              name="isSchoolStudent"
+              checked={formData.isSchoolStudent}
+              onChange={handleCheckboxChange}
+              disabled={isLoading}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <label htmlFor="isSchoolStudent" className="form-label" style={{ marginBottom: 0, cursor: 'pointer' }}>Вы школьник?</label>
+          </div>
+
+          {formData.isSchoolStudent && (
+            <div className="form-group">
+              <label htmlFor="schoolClass" className="form-label">Класс *</label>
+              <input
+                type="text"
+                id="schoolClass"
+                name="schoolClass"
+                value={formData.schoolClass}
+                onChange={handleChange}
+                className={`form-input ${errors.schoolClass ? 'error' : ''}`}
+                placeholder="Например: 10А"
+                disabled={isLoading}
+              />
+              {errors.schoolClass && <span className="error-message">{errors.schoolClass}</span>}
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="specialization" className="form-label">Направление подготовки / специализация *</label>
             <select
@@ -102,17 +152,28 @@ const Registration = ({ onSubmit }) => {
               className={`form-input ${errors.specialization ? 'error' : ''}`}
               disabled={isLoading}
             >
-              <option value="IT">Программирование / IT</option>
-              <option value="PSY">Психология</option>
-              <option value="BIO">Биология</option>
-              <option value="MED">Медицина</option>
-              <option value="ENG">Инженерия</option>
-              <option value="MATH">Математика</option>
-              <option value="PHY">Физика</option>
-              <option value="LING">Лингвистика</option>
-              <option value="ECO">Экономика</option>
-              <option value="DES">Дизайн</option>
-              <option value="OTHER">Другое</option>
+              {formData.isSchoolStudent ? (
+                <>
+                  <option value="SOC_ECO">Социально-экономический класс</option>
+                  <option value="TECH">Технический класс</option>
+                  <option value="NAT_SCI">Естественно-научный класс</option>
+                  <option value="UNIV">Универсальный класс</option>
+                </>
+              ) : (
+                <>
+                  <option value="IT">Программирование / IT</option>
+                  <option value="PSY">Психология</option>
+                  <option value="BIO">Биология</option>
+                  <option value="MED">Медицина</option>
+                  <option value="ENG">Инженерия</option>
+                  <option value="MATH">Математика</option>
+                  <option value="PHY">Физика</option>
+                  <option value="LING">Лингвистика</option>
+                  <option value="ECO">Экономика</option>
+                  <option value="DES">Дизайн</option>
+                  <option value="OTHER">Другое</option>
+                </>
+              )}
             </select>
             {errors.specialization && <span className="error-message">{errors.specialization}</span>}
             <div className="form-hint">Выберите ваше основное направление</div>
@@ -150,7 +211,7 @@ const Registration = ({ onSubmit }) => {
           <button
             type="submit"
             className={`submit-button ${isLoading ? 'loading' : ''}`}
-            disabled={isLoading || !formData.id.trim() || !formData.sessionNumber.trim() || !formData.specialization}
+            disabled={isLoading || !formData.id.trim() || !formData.sessionNumber.trim() || !formData.specialization || (formData.isSchoolStudent && !formData.schoolClass.trim())}
           >
             {isLoading ? (
               <>
