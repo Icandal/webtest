@@ -24,6 +24,7 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
   const [gonogoData, setGonogoData] = useState(null);
   const [questionnaireData, setQuestionnaireData] = useState(null);
 
+  // Инициализируем сессию ВСЕГДА с нуля (с Flanker Task)
   useEffect(() => {
     const initializeExperiment = async () => {
       setLoading(true);
@@ -34,13 +35,17 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
           participantData.session_number,
           participantData.fatigue_rating
         );
+        
         if (sessionResult.success) {
           setExperimentSessionId(sessionResult.data.session_id);
+          
+          // Создаем первый блок
           const blockResult = await participantApi.createBlock(
             sessionResult.data.session_id,
             1,
             'flanker_task'
           );
+          
           if (blockResult.success) {
             setCurrentBlockId(blockResult.data.block_id);
           } else {
@@ -64,30 +69,30 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
 
   const handleFlankerComplete = async (blockData) => {
     setFlankerData(blockData);
-    setFlankerCompleted(true);
     try {
       if (!experimentSessionId) {
         setCurrentBlockId(Date.now());
-        return;
-      }
-      const blockResult = await participantApi.createBlock(
-        experimentSessionId,
-        2,
-        'nback_task'
-      );
-      if (blockResult.success) {
-        setCurrentBlockId(blockResult.data.block_id);
       } else {
-        setCurrentBlockId(Date.now());
+        const blockResult = await participantApi.createBlock(
+          experimentSessionId,
+          2,
+          'nback_task'
+        );
+        if (blockResult.success) {
+          setCurrentBlockId(blockResult.data.block_id);
+        } else {
+          setCurrentBlockId(Date.now());
+        }
       }
     } catch (error) {
       setCurrentBlockId(Date.now());
     }
+    // Переключаем экран ТОЛЬКО после получения нового currentBlockId
+    setFlankerCompleted(true);
   };
 
   const handleNbackComplete = async (blockData) => {
     setNbackData(blockData);
-    setNbackCompleted(true);
     if (blockData.blockId) {
       try {
         await nbackApi.completeBlock(blockData.blockId);
@@ -96,26 +101,26 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     try {
       if (!experimentSessionId) {
         setCurrentBlockId(Date.now());
-        return;
-      }
-      const blockResult = await participantApi.createBlock(
-        experimentSessionId,
-        3,
-        'gonogo_task'
-      );
-      if (blockResult.success) {
-        setCurrentBlockId(blockResult.data.block_id);
       } else {
-        setCurrentBlockId(Date.now());
+        const blockResult = await participantApi.createBlock(
+          experimentSessionId,
+          3,
+          'gonogo_task'
+        );
+        if (blockResult.success) {
+          setCurrentBlockId(blockResult.data.block_id);
+        } else {
+          setCurrentBlockId(Date.now());
+        }
       }
     } catch (error) {
       setCurrentBlockId(Date.now());
     }
+    setNbackCompleted(true);
   };
 
   const handleGonogoComplete = async (blockData) => {
     setGonogoData(blockData);
-    setGonogoCompleted(true);
     if (blockData.blockId) {
       try {
         await api.post('/block/complete/', { block_id: blockData.blockId });
@@ -124,31 +129,32 @@ const ExperimentFlow = ({ participantData, onExperimentComplete }) => {
     try {
       if (!experimentSessionId) {
         setCurrentBlockId(Date.now());
-        return;
-      }
-      const blockResult = await participantApi.createBlock(
-        experimentSessionId,
-        4,
-        'post_experiment_questionnaire'
-      );
-      if (blockResult.success) {
-        setCurrentBlockId(blockResult.data.block_id);
       } else {
-        setCurrentBlockId(Date.now());
+        const blockResult = await participantApi.createBlock(
+          experimentSessionId,
+          4,
+          'post_experiment_questionnaire'
+        );
+        if (blockResult.success) {
+          setCurrentBlockId(blockResult.data.block_id);
+        } else {
+          setCurrentBlockId(Date.now());
+        }
       }
     } catch (error) {
       setCurrentBlockId(Date.now());
     }
+    setGonogoCompleted(true);
   };
 
   const handleQuestionnaireComplete = async (blockData) => {
     setQuestionnaireData(blockData);
-    setQuestionnaireCompleted(true);
     if (blockData.blockId) {
       try {
         await api.post('/block/complete/', { block_id: blockData.blockId });
       } catch (error) {}
     }
+    setQuestionnaireCompleted(true);
     completeExperiment();
   };
 

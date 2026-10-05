@@ -11,22 +11,24 @@ const App = () => {
   const [showRegistration, setShowRegistration] = useState(false);
   const [experimentStarted, setExperimentStarted] = useState(false);
 
+  // Защита от случайной перезагрузки страницы
   useEffect(() => {
-    const savedConsent = localStorage.getItem('informedConsent');
-    if (savedConsent === 'true') {
-      setConsentGiven(true);
-      setShowRegistration(true);
-    }
-  }, []);
+    const handleBeforeUnload = (e) => {
+      if (experimentStarted) {
+        e.preventDefault();
+        e.returnValue = ''; // Это вызовет стандартный диалог браузера с предупреждением
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [experimentStarted]);
 
   const handleConsent = () => {
-    localStorage.setItem('informedConsent', 'true');
     setConsentGiven(true);
     setShowRegistration(true);
   };
 
   const handleDecline = () => {
-    localStorage.removeItem('informedConsent');
     setConsentGiven(false);
     alert('Вы отказались от участия. Страница будет перезагружена.');
     window.location.reload();
@@ -48,7 +50,6 @@ const App = () => {
         console.error('Ошибка соединения:', error);
         alert('Не удалось связаться с сервером. Проверьте интернет-соединение.');
       }
-      // ДОБАВЛЕН RETURN СЮДА! Это критически важно, чтобы не запускать эксперимент при ошибке.
       return; 
     }
 
@@ -58,18 +59,14 @@ const App = () => {
       fatigue_rating: data.fatigue_rating,
       specialization: data.specialization,
     });
-
+    
     setShowRegistration(false);
     setExperimentStarted(true);
   };
 
   const resetExperiment = () => {
-    if (window.confirm('Вы уверены, что хотите начать эксперимент заново? Все текущие данные будут удалены.')) {
-      localStorage.removeItem('informedConsent');
-      localStorage.removeItem('participantId');
-      localStorage.removeItem('sessionNumber');
-      localStorage.removeItem('currentStage');
-      window.location.reload();
+    if (window.confirm('Вы уверены, что хотите прервать текущую сессию? Все данные будут удалены.')) {
+      window.location.reload(); // Полный сброс без сохранения данных
     }
   };
 
@@ -79,7 +76,7 @@ const App = () => {
     <>
       {showResetButton && (
         <button className="reset-experiment-btn" onClick={resetExperiment} title="Начать эксперимент заново">
-          🔄 Новый эксперимент
+          🔄 Прервать эксперимент
         </button>
       )}
       {!consentGiven && <InformedConsentPopup onConsent={handleConsent} onDecline={handleDecline} />}
@@ -90,7 +87,7 @@ const App = () => {
           onExperimentComplete={(result) => {
             console.log('Эксперимент завершён', result);
             alert('Спасибо за участие! Эксперимент окончен.');
-            localStorage.removeItem('currentStage');
+            window.location.reload(); // Возвращаем в самое начало
           }}
         />
       )}
